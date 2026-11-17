@@ -14,7 +14,8 @@ export function activate(context: vscode.ExtensionContext) {
   output = vscode.window.createOutputChannel('Local Runner');
   context.subscriptions.push(
     output,
-    vscode.commands.registerCommand('localRunner.runTask', () => runTask(context)),
+    vscode.commands.registerCommand('localRunner.runTask', () => runTask(context, 'task')),
+    vscode.commands.registerCommand('localRunner.applyClipboard', () => runTask(context, 'clipboard')),
     vscode.commands.registerCommand('localRunner.selectModel', () => selectModel(context)),
     vscode.commands.registerCommand('localRunner.runBuild', async () => {
       const root = workspaceRoot();
@@ -289,7 +290,7 @@ function extractErrors(out: string): string {
 
 // ---------- 主流程 ----------
 
-async function runTask(context: vscode.ExtensionContext) {
+async function runTask(context: vscode.ExtensionContext, mode: 'task' | 'clipboard' = 'task') {
   const root = workspaceRoot();
   if (!root) { return; }
 
@@ -315,16 +316,47 @@ async function runTask(context: vscode.ExtensionContext) {
     modelLabel = `Ollama / ${cfg<string>('ollamaModel')}`;
   }
 
-  const task = await vscode.window.showInputBox({
-    prompt: `用 ${modelLabel} 執行任務`,
-    placeHolder: '例：在 LoadMesh() 加入檔案不存在時的錯誤處理，其他函式不要動',
-    ignoreFocusOut: true,
-  });
-  if (!task) { return; }
-
+  let task: string;
   const files = new Set<string>();
   const active = vscode.window.activeTextEditor?.document;
   if (active && active.uri.scheme === 'file') { files.add(active.uri.fsPath); }
+
+  if (mode === 'clipboard') {
+    if (files.size === 0) {
+      vscode.window.showErrorMessage('請先打開要修改的檔案，再執行「套用剪貼簿的修改」。');
+      return;
+    }
+    const clip = (await vscode.env.clipboard.readText()).trim();
+    if (!clip) {
+      vscode.window.showErrorMessage('剪貼簿是空的。請先在 Copilot Chat 複製它的回答。');
+      return;
+    }
+    const note = await vscode.window.showInputBox({
+      prompt: `用 ${modelLabel} 套用剪貼簿內容（${clip.length} 字）到目前檔案`,
+      placeHolder: '（選填）補充說明，例如：只套用 LoadMesh 的部分。直接按 Enter 略過',
+      ignoreFocusOut: true,
+    });
+    if (note === undefined) { return; }
+    task = [
+      'Apply the change described below to the current file.',
+      'The change was written by another assistant. It may contain explanations and code snippets.',
+      'Merge the code into the correct place. Keep ALL other existing code unchanged.',
+      'Do not redesign or add anything that is not in the change.',
+      note ? `User note: ${note}` : '',
+      '<<<CHANGE>>>',
+      clip,
+      '<<<END CHANGE>>>',
+    ].filter(Boolean).join('\n');
+  } else {
+    const input = await vscode.window.showInputBox({
+      prompt: `用 ${modelLabel} 執行任務`,
+      placeHolder: '例：在 LoadMesh() 加入檔案不存在時的錯誤處理，其他函式不要動（多行內容請用 Ctrl+Alt+V 剪貼簿模式）',
+      ignoreFocusOut: true,
+    });
+    if (!input) { return; }
+    task = input;
+  }
+
   const more = await vscode.window.showOpenDialog({
     canSelectMany: true, defaultUri: vscode.Uri.file(root),
     openLabel: '加入參考檔案（不需要就按取消）',

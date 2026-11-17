@@ -2,7 +2,7 @@
   "name": "local-runner",
   "displayName": "Local Runner（本機 Ollama 自動改檔＋建置）",
   "description": "用本機 Ollama 模型產生修改，預覽後自動寫入檔案並執行建置，失敗自動修正。資料不離開電腦。",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "sean-local",
   "license": "MIT",
   "engines": {
@@ -14,11 +14,13 @@
   "contributes": {
     "commands": [
       { "command": "localRunner.runTask", "title": "Local Runner: 執行任務（改檔＋建置）" },
+      { "command": "localRunner.applyClipboard", "title": "Local Runner: 套用剪貼簿的修改（Copilot 回答 → 檔案）" },
       { "command": "localRunner.selectModel", "title": "Local Runner: 選擇模型" },
       { "command": "localRunner.runBuild", "title": "Local Runner: 只執行建置" }
     ],
     "keybindings": [
-      { "command": "localRunner.runTask", "key": "ctrl+alt+r" }
+      { "command": "localRunner.runTask", "key": "ctrl+alt+r" },
+      { "command": "localRunner.applyClipboard", "key": "ctrl+alt+v" }
     ],
     "configuration": {
       "title": "Local Runner",

@@ -43,7 +43,7 @@ ollama run coder30b-32k --verbose "用三句話說明什麼是 C# 的 interface"
 ---
 
 ## 第 5 步：安裝 Local Runner（主力：最穩定）
-1. VS Code → 延伸模組 → 右上「⋯」→「從 VSIX 安裝」→ 選 `local-runner-0.2.0.vsix`
+1. VS Code → 延伸模組 → 右上「⋯」→「從 VSIX 安裝」→ 選 `local-runner-0.3.0.vsix`
 2. Ctrl+, 搜尋 `localRunner`，設定：
    - buildCommand：`dotnet build 你的方案.sln -c Release`
    - ollamaModel：`coder30b-32k`（或用 Ctrl+Shift+P →「Local Runner: 選擇模型」）
@@ -62,10 +62,25 @@ ollama run coder30b-32k --verbose "用三句話說明什麼是 C# 的 interface"
 
 ---
 
-## 第 7 步：日常使用
+## 第 7 步：推薦流程「Copilot 想 + Local Runner 套用」
+設計、修改、優化這類需要判斷的工作，交給 Copilot；套用到檔案、建置、修小錯交給本機模型。
+1. 在 **Copilot Chat** 說明需求，請它給修改後的程式碼（可貼上目前檔案內容給它看）
+2. 在 Copilot 的回答上 **複製整段回答**（說明＋程式碼都可以）
+3. 在 VS Code **打開要修改的檔案**
+4. 按 **Ctrl+Alt+V**（Local Runner: 套用剪貼簿的修改）
+5. 補充說明可留空，直接按 Enter；參考檔案不需要就按取消
+6. 看差異預覽 → 確認右邊檔案完整、只改了該改的地方 → 按「套用」
+7. 自動建置；失敗會自動請本機模型修正
+
+小提醒：
+- 一次只套用一個檔案的修改；Copilot 改了多個檔案，就分次打開各檔案、各複製對應那段
+- 差異預覽中若右邊檔案少了一大段，按取消，不要套用
+
+## 第 8 步：日常使用
 | 情況 | 用哪個 |
 |---|---|
-| 改一兩個檔案、修建置錯誤 | **Local Runner**（Ctrl+Alt+R） |
+| 設計、優化、需要判斷 | **Copilot Chat 想 → Ctrl+Alt+V 套用** |
+| 改一兩個檔案、修建置錯誤（純本機） | **Local Runner**（Ctrl+Alt+R） |
 | 需要它自己找檔案、多步驟、看圖 | **Cline**（先 Plan 再 Act） |
 | 單純問問題 | Ollama 聊天視窗或 Cline 問答 |
 
