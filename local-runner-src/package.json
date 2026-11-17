@@ -1,0 +1,95 @@
+{
+  "name": "local-runner",
+  "displayName": "Local Runner（本機 Ollama 自動改檔＋建置）",
+  "description": "用本機 Ollama 模型產生修改，預覽後自動寫入檔案並執行建置，失敗自動修正。資料不離開電腦。",
+  "version": "0.2.0",
+  "publisher": "sean-local",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": ["Other"],
+  "main": "./out/extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "commands": [
+      { "command": "localRunner.runTask", "title": "Local Runner: 執行任務（改檔＋建置）" },
+      { "command": "localRunner.selectModel", "title": "Local Runner: 選擇模型" },
+      { "command": "localRunner.runBuild", "title": "Local Runner: 只執行建置" }
+    ],
+    "keybindings": [
+      { "command": "localRunner.runTask", "key": "ctrl+alt+r" }
+    ],
+    "configuration": {
+      "title": "Local Runner",
+      "properties": {
+        "localRunner.provider": {
+          "type": "string",
+          "enum": ["ollama", "copilot"],
+          "default": "ollama",
+          "description": "模型來源：ollama = 本機（預設）；copilot = VS Code 的 Copilot 模型。"
+        },
+        "localRunner.ollamaUrl": {
+          "type": "string",
+          "default": "http://localhost:11434",
+          "description": "Ollama 位址。"
+        },
+        "localRunner.ollamaModel": {
+          "type": "string",
+          "default": "coder30b-32k",
+          "description": "Ollama 模型名稱（可用「Local Runner: 選擇模型」從清單挑）。"
+        },
+        "localRunner.numCtx": {
+          "type": "number",
+          "default": 32768,
+          "description": "Context 長度（要和 Modelfile 的 num_ctx 一致）。"
+        },
+        "localRunner.requestTimeoutSeconds": {
+          "type": "number",
+          "default": 1800,
+          "description": "等待模型回覆的最長秒數（電腦慢就調大）。"
+        },
+        "localRunner.buildCommand": {
+          "type": "string",
+          "default": "",
+          "description": "建置指令（在工作區根目錄執行），例如：dotnet build MySolution.sln -c Release。留空則不建置。"
+        },
+        "localRunner.maxIterations": {
+          "type": "number",
+          "default": 2,
+          "description": "建置失敗時，自動請模型修正的最多次數。"
+        },
+        "localRunner.includeFileList": {
+          "type": "boolean",
+          "default": false,
+          "description": "是否把專案檔案清單送給模型（會多用 context，一般不需要）。"
+        },
+        "localRunner.autoApply": {
+          "type": "boolean",
+          "default": false,
+          "description": "true = 不預覽直接寫入檔案（不建議）。"
+        },
+        "localRunner.extraRules": {
+          "type": "string",
+          "default": "",
+          "description": "額外規則，會附加在給模型的指示中。"
+        },
+        "localRunner.buildTimeoutSeconds": {
+          "type": "number",
+          "default": 600,
+          "description": "建置逾時秒數。"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "package": "vsce package --allow-missing-repository"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.95.0",
+    "@vscode/vsce": "^3.0.0",
+    "typescript": "^5.4.0"
+  }
+}
