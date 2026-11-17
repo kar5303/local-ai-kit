@@ -1,0 +1,42 @@
+{
+  "_說明": "每個零件一個項目。material_class: ductile(結構鋼，用 Mises) / brittle(灰鑄鐵，用最大主應力)。allowable: 鋼填降伏強度、鑄鐵填抗拉強度（依公司標準）。",
+  "parts": {
+    "Solid_part-2": {
+      "display_name": "測試方管",
+      "material_class": "ductile",
+      "allowable": 420,
+      "moving_axis": null,
+      "_inp_material": "S420"
+    }
+  },
+  "safety_factor_required": 1.0,
+  "weights": {
+    "strength": 0.5,
+    "stiffness": 0.5
+  },
+  "exclude_bc_radius": 20,
+  "hotspot_top_percent": 5,
+  "hotspot_cluster_distance": 40,
+  "regions": [
+    {
+      "name": "固定端附近",
+      "part": "Solid_part-2",
+      "xmin": -400,
+      "xmax": -350,
+      "ymin": 0,
+      "ymax": 50,
+      "zmin": 0,
+      "zmax": 50
+    },
+    {
+      "name": "自由端附近",
+      "part": "Solid_part-2",
+      "xmin": -50,
+      "xmax": 0,
+      "ymin": 0,
+      "ymax": 50,
+      "zmin": 0,
+      "zmax": 50
+    }
+  ]
+}
