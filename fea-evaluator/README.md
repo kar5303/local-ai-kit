@@ -47,7 +47,7 @@ python fea_eval.py Analysis-1.inp Analysis-1.frd fea_config.json
 | 總應變能 | 3.3323e-8 N·mm | 梁理論 w²L⁵/(40EI) = 3.294e-8 | 1.2%（梁理論不含剪切變形） |
 | 最大位移 | 1.083e-5 mm | 梁理論 wL⁴/(8EI) = 1.076e-5 | 0.6% |
 
-## 範例（先在公司電腦跑這個，確認環境正常）
+## 範例（請確認環境正常）
 ```
 cd example
 python ../fea_eval.py Analysis-1.inp Analysis-1.frd fea_config.json
