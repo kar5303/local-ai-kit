@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "prepomax": {
+      "type": "streamableHttp",
+      "url": "http://127.0.0.1:8756/mcp",
+      "headers": {
+        "Authorization": "Bearer 貼上PrePoMax的token"
+      },
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}

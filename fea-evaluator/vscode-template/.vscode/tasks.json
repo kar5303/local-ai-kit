@@ -1,0 +1,25 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "FEA: 評估目前資料夾的分析結果",
+      "type": "shell",
+      "command": "python",
+      "args": ["${workspaceFolder}/fea_eval.py", "${input:inp}", "${input:frd}", "fea_config.json"],
+      "options": { "cwd": "${fileDirname}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "FEA: 執行範例驗證 (V-001)",
+      "type": "shell",
+      "command": "python",
+      "args": ["../fea_eval.py", "Analysis-1.inp", "Analysis-1.frd", "fea_config.json"],
+      "options": { "cwd": "${workspaceFolder}/example" },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    { "id": "inp", "type": "promptString", "description": ".inp 檔名", "default": "Analysis-1.inp" },
+    { "id": "frd", "type": "promptString", "description": ".frd 檔名", "default": "Analysis-1.frd" }
+  ]
+}
