@@ -2,6 +2,37 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "FEA: 分析目前 PrePoMax 模型（求解＋評估）",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": [
+        "run_current_model.py"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/mcp",
+        "env": {
+          "PYTHONUTF8": "1"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "FEA: 只重新評估（改完 fea_config.json 後）",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": [
+        "run_current_model.py",
+        "--eval-only"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/mcp",
+        "env": {
+          "PYTHONUTF8": "1"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "FEA: 執行範例驗證 (V-001)",
       "type": "process",
       "command": "${command:python.interpreterPath}",
@@ -55,6 +86,21 @@
       "command": "${command:python.interpreterPath}",
       "args": [
         "v003_cantilever.py"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/mcp",
+        "env": {
+          "PYTHONUTF8": "1"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "FEA: V-007 兩零件組件驗證（自動建模＋求解）",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": [
+        "v007_two_parts.py"
       ],
       "options": {
         "cwd": "${workspaceFolder}/mcp",

@@ -2,24 +2,145 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "FEA: 評估目前資料夾的分析結果",
-      "type": "shell",
-      "command": "python",
-      "args": ["${workspaceFolder}/fea_eval.py", "${input:inp}", "${input:frd}", "fea_config.json"],
-      "options": { "cwd": "${fileDirname}" },
+      "label": "FEA: 分析目前 PrePoMax 模型（求解＋評估）",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": [
+        "run_current_model.py"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/mcp",
+        "env": {
+          "PYTHONUTF8": "1"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "FEA: 只重新評估（改完 fea_config.json 後）",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": [
+        "run_current_model.py",
+        "--eval-only"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/mcp",
+        "env": {
+          "PYTHONUTF8": "1"
+        }
+      },
       "problemMatcher": []
     },
     {
       "label": "FEA: 執行範例驗證 (V-001)",
-      "type": "shell",
-      "command": "python",
-      "args": ["../fea_eval.py", "Analysis-1.inp", "Analysis-1.frd", "fea_config.json"],
-      "options": { "cwd": "${workspaceFolder}/example" },
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": [
+        "../fea_eval.py",
+        "Analysis-1.inp",
+        "Analysis-1.frd",
+        "fea_config.json"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/example",
+        "env": {
+          "PYTHONUTF8": "1"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "FEA: 測試 PrePoMax MCP 連線",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": [
+        "mcp_probe.py"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/mcp",
+        "env": {
+          "PYTHONUTF8": "1"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "FEA: 探索 PrePoMax API（唯讀）",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": [
+        "explore_api.py"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/mcp",
+        "env": {
+          "PYTHONUTF8": "1"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "FEA: V-003 懸臂剛性驗證（自動建模＋求解）",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": [
+        "v003_cantilever.py"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/mcp",
+        "env": {
+          "PYTHONUTF8": "1"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "FEA: V-007 兩零件組件驗證（自動建模＋求解）",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": [
+        "v007_two_parts.py"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/mcp",
+        "env": {
+          "PYTHONUTF8": "1"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "FEA: 評估指定的分析結果",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": [
+        "${workspaceFolder}/fea_eval.py",
+        "${input:inp}",
+        "${input:frd}",
+        "fea_config.json"
+      ],
+      "options": {
+        "cwd": "${fileDirname}",
+        "env": {
+          "PYTHONUTF8": "1"
+        }
+      },
       "problemMatcher": []
     }
   ],
   "inputs": [
-    { "id": "inp", "type": "promptString", "description": ".inp 檔名", "default": "Analysis-1.inp" },
-    { "id": "frd", "type": "promptString", "description": ".frd 檔名", "default": "Analysis-1.frd" }
+    {
+      "id": "inp",
+      "type": "promptString",
+      "description": ".inp 檔名",
+      "default": "Analysis-1.inp"
+    },
+    {
+      "id": "frd",
+      "type": "promptString",
+      "description": ".frd 檔名",
+      "default": "Analysis-1.frd"
+    }
   ]
 }

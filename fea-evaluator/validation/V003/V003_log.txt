@@ -18,15 +18,11 @@
   "stderr": "",
   "error": "",
   "failed": false,
-  "elapsed": 0.038,
+  "elapsed": 0.041000999999999996,
   "recordedCommands": [
     {
       "type": "CPrepareAndRunJob",
       "description": "Run analysis: V003"
-    }
-  ]
-}
-}
    求解狀態：OK
    結果檔：E:\PrePoMax_v3_zhTW_app\Temp\V003.frd（存在=True）
 7. 評估

@@ -1,0 +1,1161 @@
+{
+  "path": "pmx.model.constraints",
+  "resolvedAs": "path",
+  "type": "ConstraintsAPI",
+  "isApiObject": true,
+  "members": [
+    {
+      "name": "add_tie",
+      "kind": "method",
+      "arguments": "name: str, master_region: Selection or Region, slave_region: Selection or Region, position_tolerance: float = None, adjust: bool = None, master_color: list[int] or str = None, slave_color: list[int] or str = None",
+      "returns": "Constraint",
+      "description": "Adds a tie constraint using command history. The selection target is surfaces for both sides. A position_tolerance must be zero or larger; it is Default when not given, float('nan') sets it back to Default, which is how a replace clears it, and get_value reads Default as None. master_color and slave_color color the two surfaces, given as [R, G, B], [R, G, B, A] or a color name.",
+      "parameters": [
+        {
+          "name": "name",
+          "isOptional": false
+        },
+        {
+          "name": "master_region",
+          "isOptional": false
+        },
+        {
+          "name": "slave_region",
+          "isOptional": false
+        },
+        {
+          "name": "position_tolerance",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "adjust",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "master_color",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "slave_color",
+          "isOptional": true,
+          "default": "None"
+        }
+      ],
+      "example": "pmx.model.constraints.add_tie('Tie-1', master, slave)"
+    },
+    {
+      "name": "replace_tie",
+      "kind": "method",
+      "arguments": "old_name: str, name: str = None, and the arguments of add_tie, all optional",
+      "returns": "Constraint",
+      "description": "Replaces an existing tie constraint using command history.",
+      "parameters": [
+        {
+          "name": "old_name",
+          "isOptional": false
+        },
+        {
+          "name": "name",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "master_region",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "slave_region",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "position_tolerance",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "adjust",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "master_color",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "slave_color",
+          "isOptional": true,
+          "default": "None"
+        }
+      ]
+    },
+    {
+      "name": "add_cyclic_symmetry",
+      "kind": "method",
+      "arguments": "name: str, master_region: Selection or Region, slave_region: Selection or Region, region: Selection or Region = None, axis_point: list[float] = None, axis_direction: list[float] = None, number_of_sectors: int = None, number_of_graph_sectors: int = None, check_sector_angle: bool = None, position_tolerance: float = None, adjust: bool = None, master_color: list[int] or str = None, slave_color: list[int] or str = None",
+      "returns": "Constraint",
+      "description": "Adds a cyclic symmetry constraint using command history. The master and the slave region are the two sector faces and their selection target is surfaces. The region is the result expansion region, its selection target is parts, as the dialog picks them, and it is required when number_of_graph_sectors is larger than 1 and refused otherwise. The axis is given by a point and a non-zero direction. number_of_sectors is at least 2 and number_of_graph_sectors between 1 and number_of_sectors. Cyclic symmetry is refused in a 2D model. The position_tolerance is taken as add_tie takes it, float('nan') meaning Default. master_color and slave_color color the two surfaces, given as [R, G, B], [R, G, B, A] or a color name.",
+      "parameters": [
+        {
+          "name": "name",
+          "isOptional": false
+        },
+        {
+          "name": "master_region",
+          "isOptional": false
+        },
+        {
+          "name": "slave_region",
+          "isOptional": false
+        },
+        {
+          "name": "region",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "axis_point",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "axis_direction",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "number_of_sectors",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "number_of_graph_sectors",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "check_sector_angle",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "position_tolerance",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "adjust",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "master_color",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "slave_color",
+          "isOptional": true,
+          "default": "None"
+        }
+      ]
+    },
+    {
+      "name": "replace_cyclic_symmetry",
+      "kind": "method",
+      "arguments": "old_name: str, name: str = None, and the arguments of add_cyclic_symmetry, all optional, clear_expansion_region: bool = None",
+      "returns": "Constraint",
+      "description": "Replaces an existing cyclic symmetry constraint using command history. A replace that lowers number_of_graph_sectors to 1 must also drop the result expansion region, which clear_expansion_region=True does; it cannot be combined with region. A number_of_sectors below the kept number_of_graph_sectors is refused rather than lowering it; give both.",
+      "parameters": [
+        {
+          "name": "old_name",
+          "isOptional": false
+        },
+        {
+          "name": "name",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "master_region",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "slave_region",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "region",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "axis_point",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "axis_direction",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "number_of_sectors",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "number_of_graph_sectors",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "check_sector_angle",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "position_tolerance",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "adjust",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "master_color",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "slave_color",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "clear_expansion_region",
+          "isOptional": true,
+          "default": "None"
+        }
+      ]
+    },
+    {
+      "name": "add_joint",
+      "kind": "method",
+      "arguments": "name: str, master_region: Selection or Region, slave_region: Selection or Region, joint_type: str = None, center_defined_by: str = None, center: list[float] = None, axis_defined_by: str = None, axis_direction: list[float] = None, formulation: str = None, stiffness_defined_by: str = None, stiffness: float or str = None, master_color: list[int] or str = None, slave_color: list[int] or str = None",
+      "returns": "Constraint",
+      "description": "Adds a joint constraint using command history. The selection target is surfaces for both sides. The joint locks the relative motion of the two surfaces about the joint centre as a Hinge, Cylindrical, Slider, Ball or Weld. The centre and the axis direction default to the centroid and the axis of the master surface, which must then be cylindrical; a given center or axis_direction switches that value to user defined. The formulation is RigidBody, two rigid bodies coupled by equations, or Springs, axial springs from every surface node to nodes on the joint axis tied by equations, which needs no rigid body and solves on shell elements; its stiffness comes from the model unless a stiffness is given. stiffness and stiffness_defined_by are refused with the RigidBody formulation, axis_defined_by and axis_direction with a Ball or Weld joint, which has no axis, a zero axis_direction, and a joint in a 2D model. A center, axis_direction or stiffness given together with a definition that does not use it - MasterSurface or FromModel - is refused. master_color and slave_color color the two surfaces, given as [R, G, B], [R, G, B, A] or a color name.",
+      "parameters": [
+        {
+          "name": "name",
+          "isOptional": false
+        },
+        {
+          "name": "master_region",
+          "isOptional": false
+        },
+        {
+          "name": "slave_region",
+          "isOptional": false
+        },
+        {
+          "name": "joint_type",
+          "isOptional": true,
+          "default": "None",
+          "values": [
+            "Hinge",
+            "Cylindrical",
+            "Slider",
+            "Ball",
+            "Weld"
+          ]
+        },
+        {
+          "name": "center_defined_by",
+          "isOptional": true,
+          "default": "None",
+          "values": [
+            "MasterSurface",
+            "Coordinates"
+          ]
+        },
+        {
+          "name": "center",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "axis_defined_by",
+          "isOptional": true,
+          "default": "None",
+          "values": [
+            "MasterSurface",
+            "UserDefined"
+          ]
+        },
+        {
+          "name": "axis_direction",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "formulation",
+          "isOptional": true,
+          "default": "None",
+          "values": [
+            "RigidBody",
+            "Springs"
+          ]
+        },
+        {
+          "name": "stiffness_defined_by",
+          "isOptional": true,
+          "default": "None",
+          "values": [
+            "FromModel",
+            "UserDefined"
+          ]
+        },
+        {
+          "name": "stiffness",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "master_color",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "slave_color",
+          "isOptional": true,
+          "default": "None"
+        }
+      ],
+      "example": "pmx.model.constraints.add_joint('Hinge-1', bore_a, bore_b, joint_type='Hinge')"
+    },
+    {
+      "name": "replace_joint",
+      "kind": "method",
+      "arguments": "old_name: str, name: str = None, and the arguments of add_joint, all optional",
+      "returns": "Constraint",
+      "description": "Replaces an existing joint constraint using command history.",
+      "parameters": [
+        {
+          "name": "old_name",
+          "isOptional": false
+        },
+        {
+          "name": "name",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "master_region",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "slave_region",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "joint_type",
+          "isOptional": true,
+          "default": "None",
+          "values": [
+            "Hinge",
+            "Cylindrical",
+            "Slider",
+            "Ball",
+            "Weld"
+          ]
+        },
+        {
+          "name": "center_defined_by",
+          "isOptional": true,
+          "default": "None",
+          "values": [
+            "MasterSurface",
+            "Coordinates"
+          ]
+        },
+        {
+          "name": "center",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "axis_defined_by",
+          "isOptional": true,
+          "default": "None",
+          "values": [
+            "MasterSurface",
+            "UserDefined"
+          ]
+        },
+        {
+          "name": "axis_direction",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "formulation",
+          "isOptional": true,
+          "default": "None",
+          "values": [
+            "RigidBody",
+            "Springs"
+          ]
+        },
+        {
+          "name": "stiffness_defined_by",
+          "isOptional": true,
+          "default": "None",
+          "values": [
+            "FromModel",
+            "UserDefined"
+          ]
+        },
+        {
+          "name": "stiffness",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "master_color",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "slave_color",
+          "isOptional": true,
+          "default": "None"
+        }
+      ]
+    },
+    {
+      "name": "add_rigid_body",
+      "kind": "method",
+      "arguments": "name: str, reference_point_name: str, region: Selection or Region, color: list[int] or str = None",
+      "returns": "Constraint",
+      "description": "Adds a rigid body constraint using command history. The selection target is geometry, as the dialog picks it, or nodes. color is the constraint color, given as [R, G, B], [R, G, B, A] or a color name.",
+      "parameters": [
+        {
+          "name": "name",
+          "isOptional": false
+        },
+        {
+          "name": "reference_point_name",
+          "isOptional": false
+        },
+        {
+          "name": "region",
+          "isOptional": false
+        },
+        {
+          "name": "color",
+          "isOptional": true,
+          "default": "None"
+        }
+      ]
+    },
+    {
+      "name": "replace_rigid_body",
+      "kind": "method",
+      "arguments": "old_name: str, name: str = None, reference_point_name: str = None, region: Selection or Region = None, color: list[int] or str = None",
+      "returns": "Constraint",
+      "description": "Replaces an existing rigid body constraint using command history.",
+      "parameters": [
+        {
+          "name": "old_name",
+          "isOptional": false
+        },
+        {
+          "name": "name",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "reference_point_name",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "region",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "color",
+          "isOptional": true,
+          "default": "None"
+        }
+      ]
+    },
+    {
+      "name": "add_kinematic_coupling",
+      "kind": "method",
+      "arguments": "name: str, reference_point_name: str, region: Selection or Region, u1: bool = None, u2: bool = None, u3: bool = None, color: list[int] or str = None",
+      "returns": "Constraint",
+      "description": "Adds a kinematic coupling constraint using command history. The selection target is surfaces. At least one of u1, u2 and u3 must stay True. In a 2D model u3=True is refused. color is the constraint color, given as [R, G, B], [R, G, B, A] or a color name.",
+      "parameters": [
+        {
+          "name": "name",
+          "isOptional": false
+        },
+        {
+          "name": "reference_point_name",
+          "isOptional": false
+        },
+        {
+          "name": "region",
+          "isOptional": false
+        },
+        {
+          "name": "u1",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "u2",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "u3",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "color",
+          "isOptional": true,
+          "default": "None"
+        }
+      ]
+    },
+    {
+      "name": "replace_kinematic_coupling",
+      "kind": "method",
+      "arguments": "old_name: str, name: str = None, and the arguments of add_kinematic_coupling, all optional",
+      "returns": "Constraint",
+      "description": "Replaces an existing kinematic coupling constraint using command history.",
+      "parameters": [
+        {
+          "name": "old_name",
+          "isOptional": false
+        },
+        {
+          "name": "name",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "reference_point_name",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "region",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "u1",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "u2",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "u3",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "color",
+          "isOptional": true,
+          "default": "None"
+        }
+      ]
+    },
+    {
+      "name": "add_distributing_coupling",
+      "kind": "method",
+      "arguments": "name: str, reference_point_name: str, region: Selection or Region, u1: bool = None, u2: bool = None, u3: bool = None, ur1: bool = None, ur2: bool = None, ur3: bool = None, color: list[int] or str = None",
+      "returns": "Constraint",
+      "description": "Adds a distributing coupling constraint using command history. The selection target is surfaces. At least one of u1, u2, u3, ur1, ur2 and ur3 must stay True. In a 2D model u3, ur1 and ur2 set to True are refused. color is the constraint color, given as [R, G, B], [R, G, B, A] or a color name.",
+      "parameters": [
+        {
+          "name": "name",
+          "isOptional": false
+        },
+        {
+          "name": "reference_point_name",
+          "isOptional": false
+        },
+        {
+          "name": "region",
+          "isOptional": false
+        },
+        {
+          "name": "u1",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "u2",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "u3",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "ur1",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "ur2",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "ur3",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "color",
+          "isOptional": true,
+          "default": "None"
+        }
+      ]
+    },
+    {
+      "name": "replace_distributing_coupling",
+      "kind": "method",
+      "arguments": "old_name: str, name: str = None, and the arguments of add_distributing_coupling, all optional",
+      "returns": "Constraint",
+      "description": "Replaces an existing distributing coupling constraint using command history.",
+      "parameters": [
+        {
+          "name": "old_name",
+          "isOptional": false
+        },
+        {
+          "name": "name",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "reference_point_name",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "region",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "u1",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "u2",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "u3",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "ur1",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "ur2",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "ur3",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "color",
+          "isOptional": true,
+          "default": "None"
+        }
+      ]
+    },
+    {
+      "name": "add_compression_only",
+      "kind": "method",
+      "arguments": "name: str, region: Selection or Region, clearance: float = None, spring_stiffness: float = None, tensile_force_at_negative_infinity: float = None, offset: float = None, non_linear: bool = None, color: list[int] or str = None",
+      "returns": "Constraint",
+      "description": "Adds a compression only constraint using command history. The selection target is surfaces. spring_stiffness and tensile_force_at_negative_infinity are Default when not given; float('nan') sets either back to Default, which is how a replace clears it, and get_value reads Default as None. color is the constraint color, given as [R, G, B], [R, G, B, A] or a color name.",
+      "parameters": [
+        {
+          "name": "name",
+          "isOptional": false
+        },
+        {
+          "name": "region",
+          "isOptional": false
+        },
+        {
+          "name": "clearance",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "spring_stiffness",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "tensile_force_at_negative_infinity",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "offset",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "non_linear",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "color",
+          "isOptional": true,
+          "default": "None"
+        }
+      ]
+    },
+    {
+      "name": "replace_compression_only",
+      "kind": "method",
+      "arguments": "old_name: str, name: str = None, and the arguments of add_compression_only, all optional",
+      "returns": "Constraint",
+      "description": "Replaces an existing compression only constraint using command history.",
+      "parameters": [
+        {
+          "name": "old_name",
+          "isOptional": false
+        },
+        {
+          "name": "name",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "region",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "clearance",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "spring_stiffness",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "tensile_force_at_negative_infinity",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "offset",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "non_linear",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "color",
+          "isOptional": true,
+          "default": "None"
+        }
+      ]
+    },
+    {
+      "name": "add_point_spring",
+      "kind": "method",
+      "arguments": "name: str, region: Selection or Region, k1: float = None, k2: float = None, k3: float = None, color: list[int] or str = None",
+      "returns": "Constraint",
+      "description": "Adds a point spring constraint using command history. The selection target is nodes. A stiffness must be zero or larger, at least one must be larger than 0, and k3 must be zero in a 2D model. color is the constraint color, given as [R, G, B], [R, G, B, A] or a color name.",
+      "parameters": [
+        {
+          "name": "name",
+          "isOptional": false
+        },
+        {
+          "name": "region",
+          "isOptional": false
+        },
+        {
+          "name": "k1",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "k2",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "k3",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "color",
+          "isOptional": true,
+          "default": "None"
+        }
+      ]
+    },
+    {
+      "name": "replace_point_spring",
+      "kind": "method",
+      "arguments": "old_name: str, name: str = None, and the arguments of add_point_spring, all optional",
+      "returns": "Constraint",
+      "description": "Replaces an existing point spring constraint using command history.",
+      "parameters": [
+        {
+          "name": "old_name",
+          "isOptional": false
+        },
+        {
+          "name": "name",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "region",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "k1",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "k2",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "k3",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "color",
+          "isOptional": true,
+          "default": "None"
+        }
+      ]
+    },
+    {
+      "name": "add_surface_spring",
+      "kind": "method",
+      "arguments": "name: str, region: Selection or Region, k1: float = None, k2: float = None, k3: float = None, stiffness_per_area: bool = None, color: list[int] or str = None",
+      "returns": "Constraint",
+      "description": "Adds a surface spring constraint using command history. The selection target is surfaces. A stiffness must be zero or larger, at least one must be larger than 0, and k3 must be zero in a 2D model. color is the constraint color, given as [R, G, B], [R, G, B, A] or a color name.",
+      "parameters": [
+        {
+          "name": "name",
+          "isOptional": false
+        },
+        {
+          "name": "region",
+          "isOptional": false
+        },
+        {
+          "name": "k1",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "k2",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "k3",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "stiffness_per_area",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "color",
+          "isOptional": true,
+          "default": "None"
+        }
+      ]
+    },
+    {
+      "name": "replace_surface_spring",
+      "kind": "method",
+      "arguments": "old_name: str, name: str = None, and the arguments of add_surface_spring, all optional",
+      "returns": "Constraint",
+      "description": "Replaces an existing surface spring constraint using command history.",
+      "parameters": [
+        {
+          "name": "old_name",
+          "isOptional": false
+        },
+        {
+          "name": "name",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "region",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "k1",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "k2",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "k3",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "stiffness_per_area",
+          "isOptional": true,
+          "default": "None"
+        },
+        {
+          "name": "color",
+          "isOptional": true,
+          "default": "None"
+        }
+      ]
+    },
+    {
+      "name": "swap_master_slave",
+      "kind": "method",
+      "arguments": "names: list[str] or str",
+      "returns": "None",
+      "description": "Swaps the master and the slave side of the named constraints using command history.",
+      "parameters": [
+        {
+          "name": "names",
+          "isOptional": false
+        }
+      ]
+    },
+    {
+      "name": "merge_by_master_slave",
+      "kind": "method",
+      "arguments": "names: list[str] or str",
+      "returns": "None",
+      "description": "Merges the named constraints that share a master and a slave region, using command history.",
+      "parameters": [
+        {
+          "name": "names",
+          "isOptional": false
+        }
+      ]
+    },
+    {
+      "name": "hide",
+      "kind": "method",
+      "arguments": "names: list[str] or str",
+      "returns": "None",
+      "description": "Hides the symbols of the named constraints using command history.",
+      "parameters": [
+        {
+          "name": "names",
+          "isOptional": false
+        }
+      ]
+    },
+    {
+      "name": "show",
+      "kind": "method",
+      "arguments": "names: list[str] or str",
+      "returns": "None",
+      "description": "Shows the symbols of the named constraints using command history.",
+      "parameters": [
+        {
+          "name": "names",
+          "isOptional": false
+        }
+      ]
+    },
+    {
+      "name": "get_names",
+      "kind": "method",
+      "arguments": "",
+      "returns": "StringList",
+      "description": "Returns the names of the items in the collection."
+    },
+    {
+      "name": "contains",
+      "kind": "method",
+      "arguments": "name: str",
+      "returns": "bool",
+      "description": "Returns true if an item with the specified name exists. The name is compared regardless of case, the way the item is found by get and by indexing.",
+      "parameters": [
+        {
+          "name": "name",
+          "isOptional": false
+        }
+      ]
+    },
+    {
+      "name": "get",
+      "kind": "method",
+      "arguments": "name: str",
+      "returns": "",
+      "description": "Returns the item with the specified name.",
+      "parameters": [
+        {
+          "name": "name",
+          "isOptional": false
+        }
+      ]
+    },
+    {
+      "name": "first",
+      "kind": "method",
+      "arguments": "",
+      "returns": "",
+      "description": "Returns the first item in the collection."
+    },
+    {
+      "name": "last",
+      "kind": "method",
+      "arguments": "",
+      "returns": "",
+      "description": "Returns the last item in the collection."
+    },
+    {
+      "name": "duplicate",
+      "kind": "method",
+      "arguments": "names: list[str] or str",
+      "returns": "None",
+      "description": "Duplicates the named items using command history. A name given twice is refused.",
+      "parameters": [
+        {
+          "name": "names",
+          "isOptional": false
+        }
+      ]
+    },
+    {
+      "name": "remove",
+      "kind": "method",
+      "arguments": "names: list[str] or str",
+      "returns": "None",
+      "description": "Removes the named items using command history. A name given twice is refused.",
+      "parameters": [
+        {
+          "name": "names",
+          "isOptional": false
+        }
+      ]
+    },
+    {
+      "name": "activate",
+      "kind": "method",
+      "arguments": "names: list[str] or str",
+      "returns": "None",
+      "description": "Activates the named items using command history. A name given twice is refused.",
+      "parameters": [
+        {
+          "name": "names",
+          "isOptional": false
+        }
+      ]
+    },
+    {
+      "name": "deactivate",
+      "kind": "method",
+      "arguments": "names: list[str] or str",
+      "returns": "None",
+      "description": "Deactivates the named items using command history. A deactivated item is kept in the model but is not written to the solver input file. A name given twice is refused.",
+      "parameters": [
+        {
+          "name": "names",
+          "isOptional": false
+        }
+      ]
+    },
+    {
+      "name": "rename",
+      "kind": "method",
+      "arguments": "old_name: str, new_name: str",
+      "returns": "None",
+      "description": "Renames an item using command history.",
+      "parameters": [
+        {
+          "name": "old_name",
+          "isOptional": false
+        },
+        {
+          "name": "new_name",
+          "isOptional": false
+        }
+      ]
+    },
+    {
+      "name": "help",
+      "kind": "method",
+      "arguments": "",
+      "returns": "None",
+      "description": "Prints documented Python API members for this object."
+    }
+  ],
+  "names": []
+}

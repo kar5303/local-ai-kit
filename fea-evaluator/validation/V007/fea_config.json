@@ -1,0 +1,25 @@
+{
+  "parts": {
+    "Solid_part-1": {
+      "display_name": "Part A（固定端，20x20 內孔）",
+      "material_class": "ductile",
+      "allowable": 420,
+      "moving_axis": null
+    },
+    "Solid_part-2": {
+      "display_name": "Part B（受力端，24x24 內孔）",
+      "material_class": "ductile",
+      "allowable": 420,
+      "moving_axis": null
+    }
+  },
+  "safety_factor_required": 1.0,
+  "weights": {
+    "strength": 0.5,
+    "stiffness": 0.5
+  },
+  "exclude_bc_radius": 20,
+  "hotspot_top_percent": 5,
+  "hotspot_cluster_distance": 40,
+  "regions": []
+}

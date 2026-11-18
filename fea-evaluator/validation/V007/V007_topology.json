@@ -1,0 +1,1190 @@
+{
+  "note": "A face or an edge is selected by its id with the surfaces or edges source, grouped by part id, or by its geometry_id with the geometry source; a vertex is selected by its node id. Areas, lengths and coordinates are in model units.",
+  "femodel": [
+    {
+      "name": "Solid_part-1",
+      "id": 1,
+      "part_type": "Solid",
+      "node_count": 600,
+      "element_count": 80,
+      "bounding_box": [
+        -400.0,
+        -200.0,
+        10.0,
+        40.0,
+        10.0,
+        40.0
+      ],
+      "face_count": 10,
+      "edge_count": 24,
+      "vertex_count": 16,
+      "faces": [
+        {
+          "id": 1,
+          "geometry_id": 30001,
+          "area": 6000.0,
+          "type": "Plane",
+          "centroid": [
+            -300.0,
+            25.0,
+            10.0
+          ],
+          "normal": [
+            0.0,
+            0.0,
+            -1.0
+          ]
+        },
+        {
+          "id": 2,
+          "geometry_id": 130001,
+          "area": 6000.0,
+          "type": "Plane",
+          "centroid": [
+            -300.0,
+            10.0,
+            25.0
+          ],
+          "normal": [
+            0.0,
+            -1.0,
+            0.0
+          ]
+        },
+        {
+          "id": 5,
+          "geometry_id": 430001,
+          "area": 6000.0,
+          "type": "Plane",
+          "centroid": [
+            -300.0,
+            25.0,
+            40.0
+          ],
+          "normal": [
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "id": 8,
+          "geometry_id": 730001,
+          "area": 6000.0,
+          "type": "Plane",
+          "centroid": [
+            -300.0,
+            40.0,
+            25.0
+          ],
+          "normal": [
+            0.0,
+            1.0,
+            0.0
+          ]
+        },
+        {
+          "id": 6,
+          "geometry_id": 530001,
+          "area": 4000.0,
+          "type": "Plane",
+          "centroid": [
+            -300.0,
+            25.0,
+            15.0
+          ],
+          "normal": [
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "id": 9,
+          "geometry_id": 830001,
+          "area": 4000.0,
+          "type": "Plane",
+          "centroid": [
+            -300.0,
+            35.0,
+            25.0
+          ],
+          "normal": [
+            0.0,
+            -1.0,
+            0.0
+          ]
+        },
+        {
+          "id": 7,
+          "geometry_id": 630001,
+          "area": 4000.0,
+          "type": "Plane",
+          "centroid": [
+            -300.0,
+            25.0,
+            35.0
+          ],
+          "normal": [
+            0.0,
+            0.0,
+            -1.0
+          ]
+        },
+        {
+          "id": 4,
+          "geometry_id": 330001,
+          "area": 4000.0,
+          "type": "Plane",
+          "centroid": [
+            -300.0,
+            15.0,
+            25.0
+          ],
+          "normal": [
+            0.0,
+            1.0,
+            0.0
+          ]
+        },
+        {
+          "id": 10,
+          "geometry_id": 930001,
+          "area": 500.0,
+          "type": "Plane",
+          "centroid": [
+            -200.0,
+            25.0,
+            25.0
+          ],
+          "normal": [
+            1.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "id": 3,
+          "geometry_id": 230001,
+          "area": 500.0,
+          "type": "Plane",
+          "centroid": [
+            -400.0,
+            25.0,
+            25.0
+          ],
+          "normal": [
+            -1.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "id": 2,
+          "geometry_id": 120001,
+          "length": 200.0,
+          "type": "Line",
+          "centroid": [
+            -300.0,
+            10.0,
+            10.0
+          ]
+        },
+        {
+          "id": 4,
+          "geometry_id": 320001,
+          "length": 200.0,
+          "type": "Line",
+          "centroid": [
+            -300.0,
+            15.0,
+            15.0
+          ]
+        },
+        {
+          "id": 6,
+          "geometry_id": 520001,
+          "length": 200.0,
+          "type": "Line",
+          "centroid": [
+            -300.0,
+            15.0,
+            35.0
+          ]
+        },
+        {
+          "id": 7,
+          "geometry_id": 620001,
+          "length": 200.0,
+          "type": "Line",
+          "centroid": [
+            -300.0,
+            10.0,
+            40.0
+          ]
+        },
+        {
+          "id": 9,
+          "geometry_id": 820001,
+          "length": 200.0,
+          "type": "Line",
+          "centroid": [
+            -300.0,
+            35.0,
+            15.0
+          ]
+        },
+        {
+          "id": 12,
+          "geometry_id": 1120001,
+          "length": 200.0,
+          "type": "Line",
+          "centroid": [
+            -300.0,
+            35.0,
+            35.0
+          ]
+        },
+        {
+          "id": 13,
+          "geometry_id": 1220001,
+          "length": 200.0,
+          "type": "Line",
+          "centroid": [
+            -300.0,
+            40.0,
+            10.0
+          ]
+        },
+        {
+          "id": 16,
+          "geometry_id": 1520001,
+          "length": 200.0,
+          "type": "Line",
+          "centroid": [
+            -300.0,
+            40.0,
+            40.0
+          ]
+        },
+        {
+          "id": 1,
+          "geometry_id": 20001,
+          "length": 30.0,
+          "type": "Line",
+          "centroid": [
+            -400.0,
+            25.0,
+            10.0
+          ]
+        },
+        {
+          "id": 3,
+          "geometry_id": 220001,
+          "length": 30.0,
+          "type": "Line",
+          "centroid": [
+            -400.0,
+            10.0,
+            25.0
+          ]
+        },
+        {
+          "id": 8,
+          "geometry_id": 720001,
+          "length": 30.0,
+          "type": "Line",
+          "centroid": [
+            -400.0,
+            25.0,
+            40.0
+          ]
+        },
+        {
+          "id": 14,
+          "geometry_id": 1320001,
+          "length": 30.0,
+          "type": "Line",
+          "centroid": [
+            -400.0,
+            40.0,
+            25.0
+          ]
+        },
+        {
+          "id": 17,
+          "geometry_id": 1620001,
+          "length": 30.0,
+          "type": "Line",
+          "centroid": [
+            -200.0,
+            25.0,
+            10.0
+          ]
+        },
+        {
+          "id": 18,
+          "geometry_id": 1720001,
+          "length": 30.0,
+          "type": "Line",
+          "centroid": [
+            -200.0,
+            10.0,
+            25.0
+          ]
+        },
+        {
+          "id": 20,
+          "geometry_id": 1920001,
+          "length": 30.0,
+          "type": "Line",
+          "centroid": [
+            -200.0,
+            25.0,
+            40.0
+          ]
+        },
+        {
+          "id": 23,
+          "geometry_id": 2220001,
+          "length": 30.0,
+          "type": "Line",
+          "centroid": [
+            -200.0,
+            40.0,
+            25.0
+          ]
+        },
+        {
+          "id": 5,
+          "geometry_id": 420001,
+          "length": 20.0,
+          "type": "Line",
+          "centroid": [
+            -400.0,
+            15.0,
+            25.0
+          ]
+        },
+        {
+          "id": 10,
+          "geometry_id": 920001,
+          "length": 20.0,
+          "type": "Line",
+          "centroid": [
+            -400.0,
+            25.0,
+            15.0
+          ]
+        },
+        {
+          "id": 11,
+          "geometry_id": 1020001,
+          "length": 20.0,
+          "type": "Line",
+          "centroid": [
+            -400.0,
+            25.0,
+            35.0
+          ]
+        },
+        {
+          "id": 15,
+          "geometry_id": 1420001,
+          "length": 20.0,
+          "type": "Line",
+          "centroid": [
+            -400.0,
+            35.0,
+            25.0
+          ]
+        },
+        {
+          "id": 19,
+          "geometry_id": 1820001,
+          "length": 20.0,
+          "type": "Line",
+          "centroid": [
+            -200.0,
+            15.0,
+            25.0
+          ]
+        },
+        {
+          "id": 21,
+          "geometry_id": 2020001,
+          "length": 20.0,
+          "type": "Line",
+          "centroid": [
+            -200.0,
+            25.0,
+            15.0
+          ]
+        },
+        {
+          "id": 22,
+          "geometry_id": 2120001,
+          "length": 20.0,
+          "type": "Line",
+          "centroid": [
+            -200.0,
+            25.0,
+            35.0
+          ]
+        },
+        {
+          "id": 24,
+          "geometry_id": 2320001,
+          "length": 20.0,
+          "type": "Line",
+          "centroid": [
+            -200.0,
+            35.0,
+            25.0
+          ]
+        }
+      ],
+      "vertices": [
+        {
+          "node_id": 1,
+          "geometry_id": 10001,
+          "coordinates": [
+            -400.0,
+            10.0,
+            10.0
+          ]
+        },
+        {
+          "node_id": 8,
+          "geometry_id": 110001,
+          "coordinates": [
+            -400.0,
+            15.0,
+            15.0
+          ]
+        },
+        {
+          "node_id": 24,
+          "geometry_id": 210001,
+          "coordinates": [
+            -400.0,
+            15.0,
+            35.0
+          ]
+        },
+        {
+          "node_id": 33,
+          "geometry_id": 310001,
+          "coordinates": [
+            -400.0,
+            10.0,
+            40.0
+          ]
+        },
+        {
+          "node_id": 48,
+          "geometry_id": 410001,
+          "coordinates": [
+            -400.0,
+            35.0,
+            15.0
+          ]
+        },
+        {
+          "node_id": 58,
+          "geometry_id": 510001,
+          "coordinates": [
+            -400.0,
+            35.0,
+            35.0
+          ]
+        },
+        {
+          "node_id": 70,
+          "geometry_id": 610001,
+          "coordinates": [
+            -400.0,
+            40.0,
+            10.0
+          ]
+        },
+        {
+          "node_id": 91,
+          "geometry_id": 710001,
+          "coordinates": [
+            -400.0,
+            40.0,
+            40.0
+          ]
+        },
+        {
+          "node_id": 545,
+          "geometry_id": 810001,
+          "coordinates": [
+            -200.0,
+            10.0,
+            10.0
+          ]
+        },
+        {
+          "node_id": 548,
+          "geometry_id": 910001,
+          "coordinates": [
+            -200.0,
+            15.0,
+            15.0
+          ]
+        },
+        {
+          "node_id": 558,
+          "geometry_id": 1010001,
+          "coordinates": [
+            -200.0,
+            15.0,
+            35.0
+          ]
+        },
+        {
+          "node_id": 564,
+          "geometry_id": 1110001,
+          "coordinates": [
+            -200.0,
+            10.0,
+            40.0
+          ]
+        },
+        {
+          "node_id": 572,
+          "geometry_id": 1210001,
+          "coordinates": [
+            -200.0,
+            35.0,
+            15.0
+          ]
+        },
+        {
+          "node_id": 578,
+          "geometry_id": 1310001,
+          "coordinates": [
+            -200.0,
+            35.0,
+            35.0
+          ]
+        },
+        {
+          "node_id": 585,
+          "geometry_id": 1410001,
+          "coordinates": [
+            -200.0,
+            40.0,
+            10.0
+          ]
+        },
+        {
+          "node_id": 597,
+          "geometry_id": 1510001,
+          "coordinates": [
+            -200.0,
+            40.0,
+            40.0
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Solid_part-2",
+      "id": 2,
+      "part_type": "Solid",
+      "node_count": 600,
+      "element_count": 80,
+      "bounding_box": [
+        -200.0,
+        0.0,
+        10.0,
+        40.0,
+        10.0,
+        40.0
+      ],
+      "face_count": 10,
+      "edge_count": 24,
+      "vertex_count": 16,
+      "faces": [
+        {
+          "id": 2,
+          "geometry_id": 130002,
+          "area": 6000.0,
+          "type": "Plane",
+          "centroid": [
+            -100.0,
+            10.0,
+            25.0
+          ],
+          "normal": [
+            0.0,
+            -1.0,
+            0.0
+          ]
+        },
+        {
+          "id": 5,
+          "geometry_id": 430002,
+          "area": 6000.0,
+          "type": "Plane",
+          "centroid": [
+            -100.0,
+            25.0,
+            40.0
+          ],
+          "normal": [
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "id": 1,
+          "geometry_id": 30002,
+          "area": 6000.0,
+          "type": "Plane",
+          "centroid": [
+            -100.0,
+            25.0,
+            10.0
+          ],
+          "normal": [
+            0.0,
+            0.0,
+            -1.0
+          ]
+        },
+        {
+          "id": 8,
+          "geometry_id": 730002,
+          "area": 6000.0,
+          "type": "Plane",
+          "centroid": [
+            -100.0,
+            40.0,
+            25.0
+          ],
+          "normal": [
+            0.0,
+            1.0,
+            0.0
+          ]
+        },
+        {
+          "id": 6,
+          "geometry_id": 530002,
+          "area": 4800.0,
+          "type": "Plane",
+          "centroid": [
+            -100.0,
+            25.0,
+            13.0
+          ],
+          "normal": [
+            0.0,
+            0.0,
+            1.0
+          ]
+        },
+        {
+          "id": 7,
+          "geometry_id": 630002,
+          "area": 4800.0,
+          "type": "Plane",
+          "centroid": [
+            -100.0,
+            25.0,
+            37.0
+          ],
+          "normal": [
+            0.0,
+            0.0,
+            -1.0
+          ]
+        },
+        {
+          "id": 9,
+          "geometry_id": 830002,
+          "area": 4800.0,
+          "type": "Plane",
+          "centroid": [
+            -100.0,
+            37.0,
+            25.0
+          ],
+          "normal": [
+            0.0,
+            -1.0,
+            0.0
+          ]
+        },
+        {
+          "id": 4,
+          "geometry_id": 330002,
+          "area": 4800.0,
+          "type": "Plane",
+          "centroid": [
+            -100.0,
+            13.0,
+            25.0
+          ],
+          "normal": [
+            0.0,
+            1.0,
+            0.0
+          ]
+        },
+        {
+          "id": 3,
+          "geometry_id": 230002,
+          "area": 324.0,
+          "type": "Plane",
+          "centroid": [
+            -200.0,
+            25.0,
+            25.0
+          ],
+          "normal": [
+            -1.0,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "id": 10,
+          "geometry_id": 930002,
+          "area": 324.0,
+          "type": "Plane",
+          "centroid": [
+            0.0,
+            25.0,
+            25.0
+          ],
+          "normal": [
+            1.0,
+            0.0,
+            0.0
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "id": 2,
+          "geometry_id": 120002,
+          "length": 200.0,
+          "type": "Line",
+          "centroid": [
+            -100.0,
+            10.0,
+            10.0
+          ]
+        },
+        {
+          "id": 4,
+          "geometry_id": 320002,
+          "length": 200.0,
+          "type": "Line",
+          "centroid": [
+            -100.0,
+            13.0,
+            13.0
+          ]
+        },
+        {
+          "id": 6,
+          "geometry_id": 520002,
+          "length": 200.0,
+          "type": "Line",
+          "centroid": [
+            -100.0,
+            13.0,
+            37.0
+          ]
+        },
+        {
+          "id": 7,
+          "geometry_id": 620002,
+          "length": 200.0,
+          "type": "Line",
+          "centroid": [
+            -100.0,
+            10.0,
+            40.0
+          ]
+        },
+        {
+          "id": 9,
+          "geometry_id": 820002,
+          "length": 200.0,
+          "type": "Line",
+          "centroid": [
+            -100.0,
+            37.0,
+            13.0
+          ]
+        },
+        {
+          "id": 12,
+          "geometry_id": 1120002,
+          "length": 200.0,
+          "type": "Line",
+          "centroid": [
+            -100.0,
+            37.0,
+            37.0
+          ]
+        },
+        {
+          "id": 13,
+          "geometry_id": 1220002,
+          "length": 200.0,
+          "type": "Line",
+          "centroid": [
+            -100.0,
+            40.0,
+            10.0
+          ]
+        },
+        {
+          "id": 16,
+          "geometry_id": 1520002,
+          "length": 200.0,
+          "type": "Line",
+          "centroid": [
+            -100.0,
+            40.0,
+            40.0
+          ]
+        },
+        {
+          "id": 1,
+          "geometry_id": 20002,
+          "length": 30.0,
+          "type": "Line",
+          "centroid": [
+            -200.0,
+            25.0,
+            10.0
+          ]
+        },
+        {
+          "id": 3,
+          "geometry_id": 220002,
+          "length": 30.0,
+          "type": "Line",
+          "centroid": [
+            -200.0,
+            10.0,
+            25.0
+          ]
+        },
+        {
+          "id": 8,
+          "geometry_id": 720002,
+          "length": 30.0,
+          "type": "Line",
+          "centroid": [
+            -200.0,
+            25.0,
+            40.0
+          ]
+        },
+        {
+          "id": 14,
+          "geometry_id": 1320002,
+          "length": 30.0,
+          "type": "Line",
+          "centroid": [
+            -200.0,
+            40.0,
+            25.0
+          ]
+        },
+        {
+          "id": 17,
+          "geometry_id": 1620002,
+          "length": 30.0,
+          "type": "Line",
+          "centroid": [
+            0.0,
+            25.0,
+            10.0
+          ]
+        },
+        {
+          "id": 18,
+          "geometry_id": 1720002,
+          "length": 30.0,
+          "type": "Line",
+          "centroid": [
+            0.0,
+            10.0,
+            25.0
+          ]
+        },
+        {
+          "id": 20,
+          "geometry_id": 1920002,
+          "length": 30.0,
+          "type": "Line",
+          "centroid": [
+            0.0,
+            25.0,
+            40.0
+          ]
+        },
+        {
+          "id": 23,
+          "geometry_id": 2220002,
+          "length": 30.0,
+          "type": "Line",
+          "centroid": [
+            0.0,
+            40.0,
+            25.0
+          ]
+        },
+        {
+          "id": 5,
+          "geometry_id": 420002,
+          "length": 24.0,
+          "type": "Line",
+          "centroid": [
+            -200.0,
+            13.0,
+            25.0
+          ]
+        },
+        {
+          "id": 10,
+          "geometry_id": 920002,
+          "length": 24.0,
+          "type": "Line",
+          "centroid": [
+            -200.0,
+            25.0,
+            13.0
+          ]
+        },
+        {
+          "id": 11,
+          "geometry_id": 1020002,
+          "length": 24.0,
+          "type": "Line",
+          "centroid": [
+            -200.0,
+            25.0,
+            37.0
+          ]
+        },
+        {
+          "id": 15,
+          "geometry_id": 1420002,
+          "length": 24.0,
+          "type": "Line",
+          "centroid": [
+            -200.0,
+            37.0,
+            25.0
+          ]
+        },
+        {
+          "id": 19,
+          "geometry_id": 1820002,
+          "length": 24.0,
+          "type": "Line",
+          "centroid": [
+            0.0,
+            13.0,
+            25.0
+          ]
+        },
+        {
+          "id": 21,
+          "geometry_id": 2020002,
+          "length": 24.0,
+          "type": "Line",
+          "centroid": [
+            0.0,
+            25.0,
+            13.0
+          ]
+        },
+        {
+          "id": 22,
+          "geometry_id": 2120002,
+          "length": 24.0,
+          "type": "Line",
+          "centroid": [
+            0.0,
+            25.0,
+            37.0
+          ]
+        },
+        {
+          "id": 24,
+          "geometry_id": 2320002,
+          "length": 24.0,
+          "type": "Line",
+          "centroid": [
+            0.0,
+            37.0,
+            25.0
+          ]
+        }
+      ],
+      "vertices": [
+        {
+          "node_id": 601,
+          "geometry_id": 10002,
+          "coordinates": [
+            -200.0,
+            10.0,
+            10.0
+          ]
+        },
+        {
+          "node_id": 608,
+          "geometry_id": 110002,
+          "coordinates": [
+            -200.0,
+            13.0,
+            13.0
+          ]
+        },
+        {
+          "node_id": 624,
+          "geometry_id": 210002,
+          "coordinates": [
+            -200.0,
+            13.0,
+            37.0
+          ]
+        },
+        {
+          "node_id": 633,
+          "geometry_id": 310002,
+          "coordinates": [
+            -200.0,
+            10.0,
+            40.0
+          ]
+        },
+        {
+          "node_id": 648,
+          "geometry_id": 410002,
+          "coordinates": [
+            -200.0,
+            37.0,
+            13.0
+          ]
+        },
+        {
+          "node_id": 658,
+          "geometry_id": 510002,
+          "coordinates": [
+            -200.0,
+            37.0,
+            37.0
+          ]
+        },
+        {
+          "node_id": 670,
+          "geometry_id": 610002,
+          "coordinates": [
+            -200.0,
+            40.0,
+            10.0
+          ]
+        },
+        {
+          "node_id": 691,
+          "geometry_id": 710002,
+          "coordinates": [
+            -200.0,
+            40.0,
+            40.0
+          ]
+        },
+        {
+          "node_id": 1145,
+          "geometry_id": 810002,
+          "coordinates": [
+            0.0,
+            10.0,
+            10.0
+          ]
+        },
+        {
+          "node_id": 1148,
+          "geometry_id": 910002,
+          "coordinates": [
+            0.0,
+            13.0,
+            13.0
+          ]
+        },
+        {
+          "node_id": 1158,
+          "geometry_id": 1010002,
+          "coordinates": [
+            0.0,
+            13.0,
+            37.0
+          ]
+        },
+        {
+          "node_id": 1164,
+          "geometry_id": 1110002,
+          "coordinates": [
+            0.0,
+            10.0,
+            40.0
+          ]
+        },
+        {
+          "node_id": 1172,
+          "geometry_id": 1210002,
+          "coordinates": [
+            0.0,
+            37.0,
+            13.0
+          ]
+        },
+        {
+          "node_id": 1178,
+          "geometry_id": 1310002,
+          "coordinates": [
+            0.0,
+            37.0,
+            37.0
+          ]
+        },
+        {
+          "node_id": 1185,
+          "geometry_id": 1410002,
+          "coordinates": [
+            0.0,
+            40.0,
+            10.0
+          ]
+        },
+        {
+          "node_id": 1197,
+          "geometry_id": 1510002,
+          "coordinates": [
+            0.0,
+            40.0,
+            40.0
+          ]
+        }
+      ]
+    }
+  ],
+  "geometry": []
+}

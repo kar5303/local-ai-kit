@@ -1,0 +1,28 @@
+1. 狀態：idle=True 未存檔=True
+   目前模型是之前驗證留下的測試模型，以新模型取代
+2. 新模型＋匯入兩零件網格
+   零件：[('Solid_part-1', 1, [-400.0, -200.0, 10.0, 40.0, 10.0, 40.0]), ('Solid_part-2', 2, [-200.0, 0.0, 10.0, 40.0, 10.0, 40.0])]
+   Part A = Solid_part-1，Part B = Solid_part-2
+3. 材料與截面
+4. Tie 綁定（介面 x = -200）
+   A 側面（法向 +X）：[{'part': 'Solid_part-1', 'part_id': 1, 'id': 10, 'centroid': [-200.0, 25.0, 25.0], 'normal': [1.0, 0.0, 0.0], 'area': 500.0}]
+   B 側面（法向 -X）：[{'part': 'Solid_part-2', 'part_id': 2, 'id': 3, 'centroid': [-200.0, 25.0, 25.0], 'normal': [-1.0, 0.0, 0.0], 'area': 324.0}]
+   add_tie 參數：['name', 'master_region', 'slave_region', 'position_tolerance', 'adjust', 'master_color', 'slave_color']
+   slave 預覽：SelectionPreview(target=surfaces, count=8, parts=1)
+5. 靜態步、固定端、端面力
+   固定端預覽：SelectionPreview(target=nodes, count=40, parts=1)
+   受力面：[{'part': 'Solid_part-2', 'part_id': 2, 'id': 10, 'centroid': [0.0, 25.0, 25.0], 'normal': [1.0, 0.0, 0.0], 'area': 324.0}]
+   受力面預覽：SelectionPreview(target=surfaces, count=8, parts=1)
+6. 求解
+   求解狀態：OK
+7. 評估
+   .inp 零件集合：['Solid_part-1', 'Solid_part-2']
+   Part A（固定端，20x20 內孔）：應變能 821.1319 N·mm，剛性貢獻 83.01%，質量 0.78000 kg（60.68%），效率比 1.368，UR 0.24318103773372188，風險佔比 67.78%
+   Part B（受力端，24x24 內孔）：應變能 168.0102 N·mm，剛性貢獻 16.99%，質量 0.50544 kg（39.32%），效率比 0.432，UR 0.17027938970083556，風險佔比 32.22%
+   總應變能 989.1421；外力功 990.9604289816139；端面平均 U2 -1.981591 mm
+8. 對照值
+   梁理論（彎曲+剪切腹板近似）：A 83.23% / B 16.77%，端面位移 1.981337 mm
+   梁理論（只算彎曲）：A 83.74% / B 16.26%，端面位移 1.959665 mm
+   Claude 端 CalculiX 2.21 參考解（*TIE，一致節點力）：A 83.01% / B 16.99%，總應變能 989.142，端面位移 1.981591 mm
+   質量：A 0.78 kg / B 0.50544 kg（A 60.68%）
+完成。修改可在 編輯 → 編輯歷程 檢視或移除。

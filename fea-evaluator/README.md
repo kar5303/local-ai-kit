@@ -3,7 +3,11 @@
 讀取 PrePoMax 的 `.inp` 和 `.frd`，依零件計算強度、剛性貢獻、質量／重心／慣性，排出優化優先順序並輸出報告。
 只用 Python 標準函式庫，不需安裝任何套件。判斷邏輯見 `評估邏輯規格.md`。
 
-## 使用
+
+## 一鍵分析（建議用法）
+在 PrePoMax 建好模型後，VS Code 執行任務「FEA: 分析目前 PrePoMax 模型（求解＋評估）」，求解與評估自動完成。詳見 `使用說明-一鍵分析.md`。
+
+## 使用（手動指定 .inp/.frd）
 ```
 python fea_eval.py Analysis-1.inp Analysis-1.frd
 ```
