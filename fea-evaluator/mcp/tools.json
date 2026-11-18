@@ -1,0 +1,434 @@
+[
+  {
+    "name": "get_guide",
+    "title": "Read the driving guide",
+    "description": "How to drive a PrePoMax session: the order the work goes in, what a number without a unit means, how to find the face you meant before you load it, how to run an analysis and read it back, and what to do when a call is refused. It is served by the application, so it is the guide of this version. Read it before the first change of a session.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true
+    }
+  },
+  {
+    "name": "list_sessions",
+    "title": "List PrePoMax sessions",
+    "description": "Lists the running PrePoMax instances that have their automation server on, each with the URL it answers on, and marks the one this connection reaches. Every tool here acts on that one session - the URL is the address, so there is nothing to switch. Call this when the user has more than one PrePoMax open, and tell them which URL to point the client at; do not try to reach another session yourself.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true
+    }
+  },
+  {
+    "name": "get_status",
+    "title": "Read the session state",
+    "description": "Reports what PrePoMax is doing right now: whether it is idle or busy and why, the open model file, the current view (model.currentView: 'geometry', 'femodel' or 'results', as pmx.view.current names it), the model space (model.modelSpace), the unit system (model.unitSystem), how many commands are in the history, whether the server is in read only mode, whether Regenerate is replaying the history (isRegenerating) or a recorded script keeps what runs out of the history (isCommandRecordingSuppressed), and under calls the long calls still running or waiting to be collected. Call it when a tool answers that the application is busy, and before a change, so the state the change assumes is the state it finds.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "process_id": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The process id this call expects to reach, from list_sessions. It is checked, not routed: this URL serves one session, so a call naming another one is refused rather than served against the wrong model. Leave it out unless you mean to assert."
+        }
+      },
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true
+    }
+  },
+  {
+    "name": "describe_api",
+    "title": "Learn the Python API",
+    "description": "Describes a part of the PrePoMax Python API, read off the API itself, so it is always current. 'pmx' is the root object; every path below it is described the same way, and a collection also reports the item names it holds right now. A path that ends at a method or a property describes that member with its parameters, and a mistyped path is answered with the likely paths. This is how to find the right call before writing it: start at 'pmx', then 'pmx.model', then the collection the work belongs to.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "The Python path to describe, for example pmx, pmx.model.steps or pmx.model.steps['Step-1'].loads. It may also be an API type name, for example Loads, to read a collection before anything holding it exists, or a type name followed by a member path, for example Result.mesh, to read the results side before a result is open. Defaults to pmx."
+        },
+        "process_id": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The process id this call expects to reach, from list_sessions. It is checked, not routed: this URL serves one session, so a call naming another one is refused rather than served against the wrong model. Leave it out unless you mean to assert."
+        }
+      },
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true
+    }
+  },
+  {
+    "name": "read_model",
+    "title": "Read the model",
+    "description": "Returns a snapshot of the open model as JSON: the model properties, the parts with their mesh state - whether each one is meshed, with its node and element count - the item names of every collection, the mesh setup items, how many user keywords and keyword edits there are, the parameters with their equation, value and description, the steps with what they contain, and the analyses with their status and is_up_to_date, which is false when the results file was modified after the run - not when the model changed. Nothing is changed. This is the cheapest way to see what is in the model before deciding what to do to it.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "process_id": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The process id this call expects to reach, from list_sessions. It is checked, not routed: this URL serves one session, so a call naming another one is refused rather than served against the wrong model. Leave it out unless you mean to assert."
+        }
+      },
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true
+    }
+  },
+  {
+    "name": "read_topology",
+    "title": "Read the part geometry",
+    "description": "Returns the faces, edges and vertices of the parts as JSON, each with the ID a selection takes, its size, its centroid and - for a face - its normal. This is how to find the entity you mean without seeing the viewport: the top face of a box is the one whose normal points up. Nothing is changed.\n\nEvery part is summarized with its counts and its bounding box. The faces of a part are listed largest first, its edges longest first and its vertices in index order, each kind capped at limit per part, and the whole answer lists no more than 240 rows together, so on an assembly the first parts are detailed and the rest say to ask for them by name. Read the remainder of one part through get_face_data, get_edge_data and get_vertex_data on it. Part names are compared regardless of case but never trimmed, and a name that matches no part - a padded one included - is reported under unmatched_part_names.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "part_names": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The parts to read, at least one. All of them when this is left out."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 240,
+          "description": "How many faces, edges and vertices to list per part, 1 to 240. Defaults to 40."
+        },
+        "process_id": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The process id this call expects to reach, from list_sessions. It is checked, not routed: this URL serves one session, so a call naming another one is refused rather than served against the wrong model. Leave it out unless you mean to assert."
+        }
+      },
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true
+    }
+  },
+  {
+    "name": "eval_expression",
+    "title": "Evaluate an expression",
+    "description": "Evaluates one Python expression against the live model and returns its value, both as JSON when it has a JSON form and as its repr. Use it for reading - a name list, a property, a computed number. It is not meant to change the model; use run_python for that. An expression that takes longer than the wait is answered the way run_python answers a long call.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "expression": {
+          "type": "string",
+          "description": "One Python expression, for example pmx.model.parts.get_names()."
+        },
+        "timeout": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 600,
+          "description": "How many seconds to wait for the answer, 0 to 600. Defaults to the requestTimeout get_status reports. A call that takes longer is not stopped: it is answered with running and a callId, and get_call collects its answer. The wait for another call to finish first counts in it, and a call that cannot start within it, or within the requestTimeout, is refused as busy. Keep it below the request timeout of your own client, or pass 0 and wait through get_call for long work."
+        },
+        "process_id": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The process id this call expects to reach, from list_sessions. It is checked, not routed: this URL serves one session, so a call naming another one is refused rather than served against the wrong model. Leave it out unless you mean to assert."
+        }
+      },
+      "required": [
+        "expression"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": false
+    }
+  },
+  {
+    "name": "run_python",
+    "title": "Run Python in the session",
+    "description": "Runs Python against the model the user has open, through the same engine the Python panel in PrePoMax runs. Every change is recorded in the command history as the command the user would have produced by hand, so the user can see it in the tree, remove it in Edit - Edit History, and rebuild the model in Edit - Regenerate History. Write the API calls directly; use describe_api to find them. The variables of one call survive into the next, because the scope is the one the Python console uses.\n\nrecord: 'commands' (the default) records each API call as its own command. 'script' records the whole source as one command instead, which is what keeps a computed model parametric - regeneration re-runs the source - but the variables do not survive the call. A script that fails after it changed the model is still recorded, so the history holds what it did up to the error.\n\nWhat the source prints to stderr comes back as stderr and does not fail the call: failed is true only when the Python ended with an exception, which is in error.\n\nA long operation - meshing a large part, an import, a regeneration - may outlast the wait, which is the requestTimeout get_status reports unless timeout says otherwise. It is not stopped and not lost: the answer is {\"running\": true, \"callId\": n}, the call runs to the end and records its commands as usual, and get_call with that callId returns the answer this tool would have returned. Until then every other tool waits for it and is refused as busy after the requestTimeout - all but get_status, get_call, cancel_call, get_guide and list_sessions - and get_status names it. The wait for such a call counts against timeout: a run_python that is still waiting for its turn when timeout runs out is refused as busy and does not run, at once for a timeout of 0.\n\nIf the answer says the application is busy, the user is editing something. Wait and try again rather than working around it.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "The Python source to run. More than one line is fine."
+        },
+        "record": {
+          "type": "string",
+          "enum": [
+            "commands",
+            "script"
+          ],
+          "description": "How the source is recorded in the command history. Defaults to commands."
+        },
+        "timeout": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 600,
+          "description": "How many seconds to wait for the answer, 0 to 600. Defaults to the requestTimeout get_status reports. A call that takes longer is not stopped: it is answered with running and a callId, and get_call collects its answer. The wait for another call to finish first counts in it, and a call that cannot start within it, or within the requestTimeout, is refused as busy. Keep it below the request timeout of your own client, or pass 0 and wait through get_call for long work."
+        },
+        "process_id": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The process id this call expects to reach, from list_sessions. It is checked, not routed: this URL serves one session, so a call naming another one is refused rather than served against the wrong model. Leave it out unless you mean to assert."
+        }
+      },
+      "required": [
+        "source"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": false
+    }
+  },
+  {
+    "name": "get_call",
+    "title": "Collect a long call",
+    "description": "Collects the answer of a call that was still running when its wait ran out and was answered with running and a callId - by run_python or eval_expression, or by read_model, read_topology, run_job or get_job, which run Python as well. It waits up to timeout seconds and returns the answer the tool that started the call would have returned - for run_python its output, its error and the commands it recorded, for read_model the snapshot - or, if it is still working, running and the callId once more; ask again. An answer is given up once its response has been written to the client; one whose response the client gave up on or cancelled stays collectable, the latest 16 for an hour. get_status lists the calls that are running or waiting to be collected.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "call_id": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The callId the still running call was answered with."
+        },
+        "timeout": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 600,
+          "description": "How many seconds to wait for it, 0 to 600. Defaults to the requestTimeout get_status reports. Keep it below the request timeout of your own client."
+        },
+        "process_id": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The process id this call expects to reach, from list_sessions. It is checked, not routed: this URL serves one session, so a call naming another one is refused rather than served against the wrong model. Leave it out unless you mean to assert."
+        }
+      },
+      "required": [
+        "call_id"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true
+    }
+  },
+  {
+    "name": "cancel_call",
+    "title": "Stop a long call",
+    "description": "Stops a call that was answered with running and a callId - by run_python, eval_expression or another tool that runs Python - one that loops forever or is doing more than was meant. It is answered within a few seconds, also while that call holds the session, and in read only mode, because it changes nothing in the model itself.\n\nThe call is interrupted at its next Python statement and ends with a KeyboardInterrupt error. A mesher the call waits for is stopped, so its meshing ends with nothing meshed from that run on, and the answer says isMesherStopped. Any other operation of PrePoMax it is inside - an import, a regeneration - cannot be interrupted and finishes first, and a blocking wait - time.sleep, a socket, input() - is not interrupted until it returns, so the answer may say it has not stopped yet. Code that catches the interrupt - a bare except - keeps running, and meshing of several parts may start its next mesher: cancel it again, since every cancel delivers a new interrupt and stops the mesher running then. The answer says only what happened: isInterrupted when the interrupt was delivered, isInterruptPending while it waits - for such an operation to return, or for a call that has not reached its Python yet, which then does not run it and ends with a KeyboardInterrupt error or with the refusal it meets first, such as busy. The commands it recorded before it stopped stay in the command history. Collect its answer with get_call afterwards: it lists them.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "call_id": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The callId the still running call was answered with."
+        },
+        "process_id": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The process id this call expects to reach, from list_sessions. It is checked, not routed: this URL serves one session, so a call naming another one is refused rather than served against the wrong model. Leave it out unless you mean to assert."
+        }
+      },
+      "required": [
+        "call_id"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": false
+    }
+  },
+  {
+    "name": "get_history",
+    "title": "Read the command history",
+    "description": "Returns the command history of the session and, on request, the journal of it: the whole session written as the Python script a user would have written. The journal is the best way to learn what the user did by hand - it names the exact API calls - and the best way to hand the session back as a script. A journal longer than 200,000 characters is not returned inline: it is written to a file in the temporary folder, and the answer gives its path as journal.fileName. It changes neither the model nor the view, but it writes files: journal_file overwrites a file that already exists under that name, also in read only mode, which protects only the command history. A journal holds the whole history, so it is replayed on an empty model - pmx.new_model first, which the user's session refuses while its model has unsaved changes: save first, or pass discard_changes=True after asking the user - through run_python with record='commands', which records each call it makes; a recorded script inside it is flattened into those calls. The guide says more.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "include_journal": {
+          "type": "boolean",
+          "description": "Emit the history as a Python script as well. Defaults to false."
+        },
+        "journal_file": {
+          "type": "string",
+          "description": "The .py file to write the journal to instead of returning it inline; the answer gives its path as journal.fileName. Needs include_journal. A file that already exists under the name is overwritten. A relative name is placed in the PrePoMax folder of the temporary folder (%TEMP%\\PrePoMax), and a missing folder it points into is created."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "How many of the most recent commands to list. 0 lists all of them. Defaults to 200."
+        },
+        "process_id": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The process id this call expects to reach, from list_sessions. It is checked, not routed: this URL serves one session, so a call naming another one is refused rather than served against the wrong model. Leave it out unless you mean to assert."
+        }
+      },
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": false
+    }
+  },
+  {
+    "name": "run_job",
+    "title": "Run an analysis",
+    "description": "Writes the solver input file and starts the analysis, without waiting for it, and returns the status it started with. The solver runs while the user keeps working; no monitor is opened for it. Poll get_job for the status, and open the results with run_python when it reports OK. If the user opens the monitor of the analysis, it is a dialog like any other: every tool but get_status, get_call, cancel_call, get_guide and list_sessions is refused as busy until it is closed.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the analysis to run."
+        },
+        "process_id": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The process id this call expects to reach, from list_sessions. It is checked, not routed: this URL serves one session, so a call naming another one is refused rather than served against the wrong model. Leave it out unless you mean to assert."
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": false
+    }
+  },
+  {
+    "name": "get_job",
+    "title": "Read an analysis status",
+    "description": "Reports the status of an analysis - None, InQueue, Running, OK, Killed, TimedOut, Failed or FailedWithResults - and is_up_to_date, which is false when the results file was modified after the run or the analysis has not finished one; it does not say whether the model changed since. On request it also returns everything the solver wrote to its output.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the analysis."
+        },
+        "include_output": {
+          "type": "boolean",
+          "description": "Return the solver output as well. Defaults to false."
+        },
+        "process_id": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The process id this call expects to reach, from list_sessions. It is checked, not routed: this URL serves one session, so a call naming another one is refused rather than served against the wrong model. Leave it out unless you mean to assert."
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": true
+    }
+  },
+  {
+    "name": "screenshot",
+    "title": "Picture the viewport",
+    "description": "Writes a PNG of the 3D viewport, returns the path and attaches the picture as an image, unless it is larger than 4 MB. Use it to see what the user sees - a picture settles a question about orientation, a selection or a result plot that no amount of reading the model can.\n\nThe optional arguments set up the shot before it is taken, through pmx.view, and are the same calls you could send with run_python. They move the user's view and it stays moved, so ask for what you need and no more. None of it is recorded in the command history, because none of it changes the model.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "file_name": {
+          "type": "string",
+          "description": "Where to write the .png. Defaults to a new file in the PrePoMax folder of the temporary folder, and a relative name is taken in that folder too."
+        },
+        "transparent_background": {
+          "type": "boolean",
+          "description": "Leave the viewport background out of the picture, so it can be put on a page of any color. Defaults to false, which pictures the background the user sees."
+        },
+        "magnification": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4,
+          "description": "Render the picture this many times larger than the viewport, 1 to 4. Defaults to 1. It is for a picture that is going to be printed, not for reading a label: the model is drawn at the larger size, but the legend, the scale bar and the triad keep the size they have on screen, so they come out smaller."
+        },
+        "view": {
+          "type": "string",
+          "enum": [
+            "geometry",
+            "femodel",
+            "results"
+          ],
+          "description": "The tree to display first."
+        },
+        "orientation": {
+          "type": "string",
+          "enum": [
+            "Front",
+            "Back",
+            "Top",
+            "Bottom",
+            "Left",
+            "Right",
+            "Isometric",
+            "IsometricNegative",
+            "Normal",
+            "Vertical"
+          ],
+          "description": "Where to put the camera."
+        },
+        "zoom_to_fit": {
+          "type": "boolean",
+          "description": "Fit everything visible in the viewport first."
+        },
+        "field": {
+          "type": "string",
+          "description": "The result field to plot, for example DISP. Needs an open result."
+        },
+        "component": {
+          "type": "string",
+          "description": "The component of that field, for example U3. Defaults to the first one. Needs field."
+        },
+        "process_id": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The process id this call expects to reach, from list_sessions. It is checked, not routed: this URL serves one session, so a call naming another one is refused rather than served against the wrong model. Leave it out unless you mean to assert."
+        }
+      },
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": false
+    }
+  },
+  {
+    "name": "exit_session",
+    "title": "Close a hidden session",
+    "description": "Closes this PrePoMax, and only when it runs without a window - a session started with -g No and the automation server, which nobody is looking at and which has no other way to end. A session open on the user's desktop is refused: the user closes their own application. The model is not saved; one with unsaved changes is refused unless discard_changes is true, so save it with pmx.save(file_name) first when the work should be kept. While an analysis is running it is refused, naming the analysis, whatever discard_changes says: wait for it or kill it first.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "discard_changes": {
+          "type": "boolean",
+          "description": "Close although the model has unsaved changes, which are lost. Defaults to false."
+        },
+        "process_id": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The process id this call expects to reach, from list_sessions. It is checked, not routed: this URL serves one session, so a call naming another one is refused rather than served against the wrong model. Leave it out unless you mean to assert."
+        }
+      },
+      "additionalProperties": false
+    },
+    "annotations": {
+      "readOnlyHint": false
+    }
+  }
+]

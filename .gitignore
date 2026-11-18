@@ -2,3 +2,6 @@ node_modules/
 out/
 *.zip
 __pycache__/
+prepomax_token.txt
+**/prepomax_token.txt
+mcp/explore/

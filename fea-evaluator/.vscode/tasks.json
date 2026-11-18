@@ -1,0 +1,85 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "FEA: 執行範例驗證 (V-001)",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": [
+        "../fea_eval.py",
+        "Analysis-1.inp",
+        "Analysis-1.frd",
+        "fea_config.json"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/example",
+        "env": {
+          "PYTHONUTF8": "1"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "FEA: 測試 PrePoMax MCP 連線",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": [
+        "mcp_probe.py"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/mcp",
+        "env": {
+          "PYTHONUTF8": "1"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "FEA: 探索 PrePoMax API（唯讀）",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": [
+        "explore_api.py"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/mcp",
+        "env": {
+          "PYTHONUTF8": "1"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "FEA: 評估指定的分析結果",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": [
+        "${workspaceFolder}/fea_eval.py",
+        "${input:inp}",
+        "${input:frd}",
+        "fea_config.json"
+      ],
+      "options": {
+        "cwd": "${fileDirname}",
+        "env": {
+          "PYTHONUTF8": "1"
+        }
+      },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "inp",
+      "type": "promptString",
+      "description": ".inp 檔名",
+      "default": "Analysis-1.inp"
+    },
+    {
+      "id": "frd",
+      "type": "promptString",
+      "description": ".frd 檔名",
+      "default": "Analysis-1.frd"
+    }
+  ]
+}
