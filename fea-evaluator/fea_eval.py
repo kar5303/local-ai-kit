@@ -215,10 +215,34 @@ def _gauss_tet():
         pts.append((p, 0.0248888888888889))
     return pts
 
+def _N_wedge15(x, y, z):
+    """15 節點楔形（CalculiX/Abaqus 節點順序）：x,y 為三角形座標，z 為 -1~1"""
+    L = [1 - x - y, x, y]
+    N = []
+    for c in (-1, 1):
+        for i in range(3):
+            N.append(0.5*L[i]*(2*L[i]-1)*(1 + c*z) - 0.5*L[i]*(1 - z*z))
+    for c in (-1, 1):
+        for (i, j) in [(0, 1), (1, 2), (2, 0)]:
+            N.append(2*L[i]*L[j]*(1 + c*z))
+    for i in range(3):
+        N.append(L[i]*(1 - z*z))
+    return N
+
+def _N_wedge6(x, y, z):
+    L = [1 - x - y, x, y]
+    return [0.5*L[i]*(1 - z) for i in range(3)] + [0.5*L[i]*(1 + z) for i in range(3)]
+
+def _gauss_wedge():
+    tri = [((1/6, 1/6), 1/6), ((2/3, 1/6), 1/6), ((1/6, 2/3), 1/6)]
+    p = [-math.sqrt(0.6), 0.0, math.sqrt(0.6)]; w = [5/9, 8/9, 5/9]
+    return [((a, b, p[k]), wt*w[k]) for (a, b), wt in tri for k in range(3)]
+
 ELEM_INFO = {
     'C3D20': (_N_hex20, _gauss_hex(3)), 'C3D20R': (_N_hex20, _gauss_hex(3)),
     'C3D8': (_N_hex8, _gauss_hex(2)), 'C3D8R': (_N_hex8, _gauss_hex(2)), 'C3D8I': (_N_hex8, _gauss_hex(2)),
     'C3D10': (_N_tet10, _gauss_tet()), 'C3D4': (_N_tet4, _gauss_tet()),
+    'C3D15': (_N_wedge15, _gauss_wedge()), 'C3D6': (_N_wedge6, _gauss_wedge()),
 }
 
 def _dN(Nfun, x, y, z, h=1e-6):

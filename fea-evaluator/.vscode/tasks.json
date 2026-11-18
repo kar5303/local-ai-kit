@@ -2,6 +2,21 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "FEA: 全自動分析 input 資料夾的 STEP",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": [
+        "auto_analyze.py"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/mcp",
+        "env": {
+          "PYTHONUTF8": "1"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "FEA: 分析目前 PrePoMax 模型（求解＋評估）",
       "type": "process",
       "command": "${command:python.interpreterPath}",

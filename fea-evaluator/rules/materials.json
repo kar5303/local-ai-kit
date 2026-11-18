@@ -1,0 +1,54 @@
+{
+  "_說明": "零件名稱含下列代號（不分大小寫）就套用該材料。單位 MM_TON_S_C：E、容許值 MPa，密度 t/mm³。鑄鐵 E 依 EN 1561 範圍取下限（剛性偏保守）；鋼 E 取 205000（資料範圍 190–210 GPa 內）。數值可自行修改。名稱沒有代號的零件不套預設值，程式會停止並列出。",
+  "materials": {
+    "FC250": {
+      "class": "brittle",
+      "E": 103000,
+      "nu": 0.26,
+      "density": 7.2e-09,
+      "allowable": 250,
+      "allowable_basis": "抗拉強度下限",
+      "sources": [
+        "抗拉強度：JIS G5501 等級 FC250（別鑄試棒抗拉強度 ≥250 MPa）",
+        "E 103–118 GPa、ν 0.26、密度 7.2 g/cm³：EN 1561 EN-GJL-250（FC250 對應），KE 材料表 https://www.ke-ag.de/wp-content/uploads/2018/10/Werkstofftabelle-GJLver2018.pdf ；KIPP https://www.kippusa.com/en-us/en-gjl-250"
+      ]
+    },
+    "FC300": {
+      "class": "brittle",
+      "E": 108000,
+      "nu": 0.26,
+      "density": 7.2e-09,
+      "allowable": 300,
+      "allowable_basis": "抗拉強度下限",
+      "sources": [
+        "抗拉強度：JIS G5501 等級 FC300（≥300 MPa）",
+        "E 108–137 GPa、ν 0.26：EN 1561 EN-GJL-300，KE 材料表（同上）；密度 7.2 g/cm³ 同 GJL 系列"
+      ]
+    },
+    "S45C": {
+      "class": "ductile",
+      "E": 205000,
+      "nu": 0.29,
+      "density": 7.85e-09,
+      "allowable": 345,
+      "allowable_basis": "降伏點下限（焼ならし N）",
+      "sources": [
+        "降伏 ≥345 MPa、抗拉 ≥570 MPa（N）：JIS G4051，NBK 技術資料 https://nbk1560.com/-/media/Images/en/Product Site/en_technical/32_Steel.pdf",
+        "E 190–210 GPa、ν 0.27–0.30、密度 7.85：一般碳鋼值（BEBON、renue 資料）"
+      ]
+    },
+    "SS400": {
+      "class": "ductile",
+      "E": 205000,
+      "nu": 0.29,
+      "density": 7.86e-09,
+      "allowable": 245,
+      "allowable_basis": "降伏點下限（厚度 ≤16 mm；16–40 mm 為 235）",
+      "sources": [
+        "降伏 ≥245 MPa（t≤16）、抗拉 400–510 MPa：JIS G3101",
+        "E 190–210 GPa、ν 0.26、密度 7860 kg/m³：BEBON SS400 資料"
+      ]
+    }
+  },
+  "default_when_no_code": null
+}
