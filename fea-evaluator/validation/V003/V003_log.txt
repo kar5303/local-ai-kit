@@ -1,0 +1,40 @@
+1. 狀態：idle=True readOnly=False 模型=Model-1 未存檔=True
+   目前模型是上一次 V-003 執行留下的測試模型，將以新模型取代
+2. 新模型（ThreeD, MM_TON_S_C）並匯入網格
+   零件：['Solid_part-1']
+3. 材料、截面、靜態步
+4. 固定端（x = -400 的節點），先預覽數量
+   預覽：SelectionPreview(target=nodes, count=40, parts=1)
+5. 自由端（x = 0 端面）表面力 F2 = -1000.0 N：用 read_topology 找面
+   找到的面：{'part_id': 1, 'id': 1, 'centroid': [-0.0, 25.0, 25.0], 'normal': [1.0, 0.0, 0.0], 'area': 500.0}
+   預覽：SelectionPreview(target=surfaces, count=8, parts=1)
+6. 建立分析並求解
+   run_job：{
+  "name": "V003",
+  "status": "Running",
+  "run": {
+  "record": "commands",
+  "output": "V003\nRunning\n",
+  "stderr": "",
+  "error": "",
+  "failed": false,
+  "elapsed": 0.038,
+  "recordedCommands": [
+    {
+      "type": "CPrepareAndRunJob",
+      "description": "Run analysis: V003"
+    }
+  ]
+}
+}
+   求解狀態：OK
+   結果檔：E:\PrePoMax_v3_zhTW_app\Temp\V003.frd（存在=True）
+7. 評估
+8. 剛性比對
+   FE 端面平均位移 U2 = -1.882458 mm（40 個節點）
+   梁理論 彎曲 FL³/3EI = 1.875458 mm；剪切（腹板近似）FL/GA_web = 0.016254 mm；合計 1.891712 mm
+   剛性 k_FE = 531.220 N/mm；k_彎曲 = 533.203；k_彎曲+剪切 = 528.622
+   差異：對彎曲 0.37%；對彎曲+剪切 -0.49%
+   總應變能 941.210221 N·mm；外力功 ½ΣF·u 941.237003；½F·δ_avg 941.229250
+   質量 1.5600 kg
+完成。PrePoMax 中的修改可在 編輯 → 編輯歷程 檢視或移除。

@@ -50,6 +50,21 @@
       "problemMatcher": []
     },
     {
+      "label": "FEA: V-003 懸臂剛性驗證（自動建模＋求解）",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": [
+        "v003_cantilever.py"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/mcp",
+        "env": {
+          "PYTHONUTF8": "1"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "FEA: 評估指定的分析結果",
       "type": "process",
       "command": "${command:python.interpreterPath}",
