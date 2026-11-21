@@ -7,8 +7,21 @@ PrePoMax 3.0.1 匯入 STEP 時零件一律命名為 Solid_part-N，不保留 CAD
 """
 import re, math
 
+FILE_ENCODING = {}
+
+def _read_text(path):
+    """STEP 檔依序嘗試 UTF-8、CP950（Big5，繁中 Windows 預設）、CP936（GBK），記錄實際使用的編碼"""
+    raw = open(path, 'rb').read()
+    for enc in ('utf-8', 'cp950', 'cp936'):
+        try:
+            t = raw.decode(enc); FILE_ENCODING[path] = enc; return t
+        except UnicodeDecodeError:
+            continue
+    FILE_ENCODING[path] = 'utf-8(取代無法解碼字元)'
+    return raw.decode('utf-8', errors='replace')
+
 def _parse(path):
-    s = open(path, encoding='utf-8', errors='replace').read()
+    s = _read_text(path)
     i = s.find('DATA;'); j = s.rfind('ENDSEC;')
     body = s[i+5:j]
     ents = {}

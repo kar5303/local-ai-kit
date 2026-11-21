@@ -17,6 +17,21 @@
       "problemMatcher": []
     },
     {
+      "label": "FEA: 檢查 STEP 零件名稱（不需 PrePoMax）",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": [
+        "check_step_names.py"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PYTHONUTF8": "1"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "FEA: 只重新評估（改完 fea_config.json 後）",
       "type": "process",
       "command": "${command:python.interpreterPath}",
