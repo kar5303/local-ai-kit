@@ -243,3 +243,47 @@ def detect_tool_and_table(model, fp, mp, ties, tol):
 def face_nodes_near(model, part_nodes, n, c, center, radius, tol):
     ids = nodes_on_plane(model, part_nodes, n, c, tol)
     return [i for i in ids if norm(sub(sub(model['nodes'][i], center), mul(n, dot(sub(model['nodes'][i], center), n)))) <= radius]
+
+# ---------------- 5b. 找不到主軸時：離支撐最遠的自由面 ----------------
+def detect_free_end(model, fp, mp, ties, support_faces, tol):
+    """
+    規則：所有平面中，排除參與 Tie 的面與支撐面，取「面形心到支撐面形心（面積加權）距離」最大的面
+    作為受力面。用於單一零件，或組件中找不到主軸與工作台時。
+    """
+    tied = {(t['master_part'], t['master_face']) for t in ties} | {(t['slave_part'], t['slave_face']) for t in ties}
+    sup = set(support_faces)
+    sf = [f for p in fp for f in fp[p]['faces'] if (p, f['id']) in sup]
+    A = sum(f['area'] for f in sf) or 1
+    sc = [sum(f['centroid'][k]*f['area'] for f in sf)/A for k in range(3)]
+    best = None
+    for p in fp:
+        for f in filter(planar, fp[p]['faces']):
+            if (p, f['id']) in tied or (p, f['id']) in sup: continue
+            dist = norm(sub(f['centroid'], sc))
+            if best is None or dist > best['distance']:
+                best = {'part': p, 'face': f['id'], 'distance': dist, 'centroid': f['centroid'], 'normal': f['normal'], 'area': f['area']}
+    if best is None:
+        return {'ok': False, 'reason': '沒有可用的自由平面'}
+    return {'ok': True, 'chosen': best, 'support_centroid': sc}
+
+def region_blocks(elements, parts, n_div=4):
+    """
+    把每個零件依其元素形心包圍盒切成格子（最長邊切 n_div 段，其餘邊依同樣格距），
+    回傳 {(part, i, j, k): {'bounds': [xmin,xmax,ymin,ymax,zmin,zmax], 'eids': set}}，供跨工況比較同一位置。
+    """
+    out = {}
+    for p in parts:
+        es = [e for e in elements if e['part'] == p]
+        if not es: continue
+        lo = [min(e['centroid'][k] for e in es) for k in range(3)]
+        hi = [max(e['centroid'][k] for e in es) for k in range(3)]
+        h = max(hi[k]-lo[k] for k in range(3)) / n_div or 1.0
+        nd = [max(1, math.ceil((hi[k]-lo[k]) / h - 1e-9)) for k in range(3)]
+        for e in es:
+            idx = tuple(min(nd[k]-1, int((e['centroid'][k]-lo[k]) / h)) for k in range(3))
+            key = (p,) + idx
+            b = out.setdefault(key, {'bounds': [1e30, -1e30, 1e30, -1e30, 1e30, -1e30], 'eids': set()})
+            b['eids'].add(e['eid'])
+            for k in range(3):
+                b['bounds'][2*k] = min(b['bounds'][2*k], e['centroid'][k]); b['bounds'][2*k+1] = max(b['bounds'][2*k+1], e['centroid'][k])
+    return out

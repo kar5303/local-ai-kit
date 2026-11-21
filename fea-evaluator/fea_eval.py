@@ -88,8 +88,11 @@ def read_inp(path):
             model['nodes'][int(parts[0])] = tuple(float(x) for x in parts[1:4])
         elif mode == 'elem':
             pending_elem += parts
-            nn = {'C3D20': 20, 'C3D20R': 20, 'C3D10': 10, 'C3D4': 4, 'C3D8': 8, 'C3D8R': 8, 'C3D8I': 8}.get(cur['type'])
+            nn = {'C3D20': 20, 'C3D20R': 20, 'C3D10': 10, 'C3D4': 4, 'C3D8': 8, 'C3D8R': 8, 'C3D8I': 8,
+                  'C3D15': 15, 'C3D6': 6}.get(cur['type'])
             if nn is None:
+                model.setdefault('unsupported', {}).setdefault(cur['type'], 0)
+                model['unsupported'][cur['type']] += 1
                 pending_elem = []
                 continue
             if len(pending_elem) >= nn + 1:
@@ -278,6 +281,18 @@ def principal_max(s):
     phi = math.acos(arg)/3
     return I1/3 + 2*r*math.cos(phi)
 
+def _inv3(m):
+    d = _det3(m)
+    return [[(m[1][1]*m[2][2]-m[1][2]*m[2][1])/d, (m[0][2]*m[2][1]-m[0][1]*m[2][2])/d, (m[0][1]*m[1][2]-m[0][2]*m[1][1])/d],
+            [(m[1][2]*m[2][0]-m[1][0]*m[2][2])/d, (m[0][0]*m[2][2]-m[0][2]*m[2][0])/d, (m[0][2]*m[1][0]-m[0][0]*m[1][2])/d],
+            [(m[1][0]*m[2][1]-m[1][1]*m[2][0])/d, (m[0][1]*m[2][0]-m[0][0]*m[2][1])/d, (m[0][0]*m[1][1]-m[0][1]*m[1][0])/d]]
+
+def energy_density_from_strain(e, E, nu):
+    """W = λ/2 (tr ε)² + μ ε:ε；e = [εxx, εyy, εzz, γxy, γyz, γzx]（工程剪應變）"""
+    lam = E*nu/((1+nu)*(1-2*nu)); mu = E/(2*(1+nu))
+    tr = e[0] + e[1] + e[2]
+    return 0.5*lam*tr*tr + mu*(e[0]**2 + e[1]**2 + e[2]**2) + 0.5*mu*(e[3]**2 + e[4]**2 + e[5]**2)
+
 def energy_density(s, E, nu):
     """線彈性等向材料的應變能密度 W = ½ σ:ε，以應力和材料常數計算。"""
     sxx, syy, szz, sxy, syz, szx = s
@@ -345,6 +360,8 @@ def evaluate(inp_path, frd_path, cfg):
     if S is None:
         raise SystemExit('frd 裡沒有 STRESS，請在 Field Output 勾選 S')
     warnings = []
+    for t, c in (model.get('unsupported') or {}).items():
+        warnings.append(f'元素型別 {t} 尚未支援（.inp 中約 {c} 行被略過），結果不完整')
 
     # 重力單位檢查（只檢查，不修改）
     for g in model['gravity']:
@@ -400,6 +417,8 @@ def evaluate(inp_path, frd_path, cfg):
             part_nodes.update(conn)
             xyz = [nodes[n] for n in conn]
             st = [S.get(n, [0]*6) for n in conn]
+            ud = [U.get(n) for n in conn] if U else None
+            use_u = bool(ud) and all(x is not None for x in ud)
             ev = ee = 0.0
             cx = cy = cz = 0.0
             for (pt, w) in gp:
@@ -411,7 +430,14 @@ def evaluate(inp_path, frd_path, cfg):
                 sg = [sum(N[i]*st[i][k] for i in range(len(N))) for k in range(6)]
                 ev += dV
                 if E:
-                    ee += energy_density(sg, E, nu) * dV
+                    if use_u:
+                        Ji = _inv3(J)
+                        g = [[sum(Ji[a][b]*dN[i][b] for b in range(3)) for a in range(3)] for i in range(len(N))]   # dNi/dx_a
+                        du = [[sum(g[i][a]*ud[i][c] for i in range(len(N))) for a in range(3)] for c in range(3)]  # du_c/dx_a
+                        eps = [du[0][0], du[1][1], du[2][2], du[0][1]+du[1][0], du[1][2]+du[2][1], du[2][0]+du[0][2]]
+                        ee += energy_density_from_strain(eps, E, nu) * dV
+                    else:
+                        ee += energy_density(sg, E, nu) * dV
                 cx += X[0]*dV; cy += X[1]*dV; cz += X[2]*dV
                 Ixx += rho*(X[1]**2 + X[2]**2)*dV; Iyy += rho*(X[0]**2 + X[2]**2)*dV; Izz += rho*(X[0]**2 + X[1]**2)*dV
                 Ixy += rho*X[0]*X[1]*dV; Iyz += rho*X[1]*X[2]*dV; Izx += rho*X[2]*X[0]*dV
@@ -534,7 +560,7 @@ def evaluate(inp_path, frd_path, cfg):
         v['advice'] = tags
 
     return {'model': model, 'units': units, 'parts': parts_out, 'ranking': ranking,
-            'hotspots': hotspots, 'warnings': warnings, 'total_se': tot_se, 'total_mass': tot_m,
+            'hotspots': hotspots, 'warnings': warnings, 'total_se': tot_se, 'total_mass': tot_m, 'elements': elem_records,
             'work_check': work_check(model, res)}
 
 def region_name(cfg, part, p):
@@ -632,7 +658,7 @@ def write_outputs(r, outdir, cfg):
                      f'，佔該零件應變能 {fmt(h["share_of_part"])}%' + ('（位於邊界條件排除區）' if h['near_bc'] else ''))
     L.append('\n## 計算方法')
     L.append('- 強度：結構鋼用 von Mises，灰鑄鐵用最大主應力；取零件節點值第 99 百分位數（排除邊界條件周圍）。利用率 = P99 ÷（容許值 ÷ 安全係數）。')
-    L.append('- 剛性貢獻：各零件應變能 ÷ 總應變能。應變能由節點應力以形函數內插、在積分點計算 ½σ:ε 後積分。線性靜力且以外力加載時，此佔比等於對整機柔度的貢獻佔比。')
+    L.append('- 剛性貢獻：各零件應變能 ÷ 總應變能。應變能由節點位移以元素形函數求積分點應變 ε，σ = Dε，積分 ½σ:ε（與 CalculiX 元素內能計算方式相同；無位移時改用節點應力內插）。線性靜力且以外力加載時，此佔比等於對整機柔度的貢獻佔比。')
     L.append('- 質量、重心、慣性：由元素幾何與材料密度積分。')
     L.append('- 效率比 = 剛性貢獻% ÷ 質量%（本工具定義的排序指標，非業界標準）。')
     L.append('- 風險佔比 = 各零件（強度權重 × 正規化利用率 + 剛性權重 × 剛性貢獻）÷ 總和，為相對優先順序，不是失效機率。')

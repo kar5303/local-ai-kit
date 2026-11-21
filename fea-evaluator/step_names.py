@@ -13,7 +13,7 @@ def _parse(path):
     body = s[i+5:j]
     ents = {}
     for m in re.finditer(r'#(\d+)\s*=\s*(.*?);\s*(?=#\d+\s*=|\Z)', body, re.S):
-        ents[int(m.group(1))] = ' '.join(m.group(2).split())
+        ents[int(m.group(1))] = re.sub(r'[ \t\r\n]+', ' ', m.group(2)).strip()
     return ents
 
 def _type(e):
@@ -37,7 +37,22 @@ def _args(e):
 
 def _ref(x): return int(x[1:]) if x.startswith('#') else None
 def _refs(x): return [int(r) for r in re.findall(r'#(\d+)', x)]
-def _str(x): return x[1:-1] if x.startswith("'") and x.endswith("'") else x
+def _decode(t):
+    """STEP 字串解碼：\\X2\\…\\X0\\（UTF-16 十六進位）、\\X4\\…\\X0\\、\\X\\hh（ISO-8859-1），以及被重複編碼的 UTF-8"""
+    def x2(m): h = m.group(1); return ''.join(chr(int(h[i:i+4], 16)) for i in range(0, len(h), 4))
+    def x4(m): h = m.group(1); return ''.join(chr(int(h[i:i+8], 16)) for i in range(0, len(h), 8))
+    t = re.sub(r'\\X2\\([0-9A-Fa-f]+)\\X0\\', x2, t)
+    t = re.sub(r'\\X4\\([0-9A-Fa-f]+)\\X0\\', x4, t)
+    t = re.sub(r'\\X\\([0-9A-Fa-f]{2})', lambda m: chr(int(m.group(1), 16)), t)
+    t = t.replace("''", "'")
+    try:
+        u = t.encode('latin-1').decode('utf-8')
+        if u != t: t = u
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        pass
+    return t
+
+def _str(x): return _decode(x[1:-1]) if x.startswith("'") and x.endswith("'") else x
 
 def _floats(x): return [float(v) for v in re.findall(r'[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?', x)]
 

@@ -17,7 +17,9 @@ F_CUT = 1000.0        # 單位切削力（N）。線性靜力下剛性與佔比�
 G = 9810.0            # mm/s²（MM_TON_S_C）
 INPUT = os.path.join(ROOT, 'input'); RESULTS = os.path.join(ROOT, 'results')
 MAT_FILE = os.path.join(ROOT, 'rules', 'materials.json')
+JUDGE = json.load(open(os.path.join(ROOT, 'rules', 'judgement.json'), encoding='utf-8'))
 LOG = []
+REPORT_HEAD = []
 def log(s=''): print(s); LOG.append(str(s))
 def jl(t):
     try: return json.loads(t)
@@ -43,7 +45,7 @@ def main():
     STEP = steps[-1]; name = os.path.splitext(os.path.basename(STEP))[0]
     OUT = os.path.join(RESULTS, name); os.makedirs(OUT, exist_ok=True)
     log(f'# 全自動分析：{os.path.basename(STEP)}'); log(f'時間：{time.strftime("%Y-%m-%d %H:%M")}')
-    rep = {'step_file': STEP, 'judgements': {}}
+    rep = {'step_file': STEP, 'judgements': {}, 'flags': []}
     p = PrePoMax()
 
     # ---- 0. PrePoMax 狀態 ----
@@ -136,7 +138,7 @@ def main():
     # ---- 4. Tie ----
     log('\n## 4. 零件接合（Tie）')
     found = json.loads(run(p, f"import json\nr = pmx.model.contact_pairs.search({tol}, pair_type='Tie', group_by='ByParts')\n"
-                   "print(json.dumps([[x.name, list(x.master_part_names), list(x.slave_part_names), str(x.unresolved)] for x in list(r)]))\nr.add()"))
+                   "print(json.dumps([[x.name, list(x.master_part_names), list(x.slave_part_names), str(x.unresolved)] for x in list(r)]))\nif r.count: r.add()"))
     log(f'- PrePoMax「搜尋接觸對」（Tie，依零件分組）找到 {len(found)} 組，已加入模型：')
     for nm, ma, sl, un in found: log(f'  - {nm}：master {ma}／slave {sl}' + (f'（未解析：{un}）' if un not in ('None', '[]', '', 'False') else ''))
     mine = R.detect_ties(model, fp, mesh, tol)
@@ -156,7 +158,14 @@ def main():
         log(f"| {r['down']} | {', '.join(r['support_parts'])} | {'是' if r['C1_single_part'] else '否'} | {'是' if r['C2_heaviest'] else '否'} | "
             f"{'是' if r['C3_stable'] else '否'}（{r['C3_margin']:.1f}） | {r['C4_bearing_ratio']:.2f} | {'✔' if r['pass'] else ''} |")
     log(f"- 組件重心 ({', '.join(f'{v:.1f}' for v in g['cg'])})，最重零件 {g['heaviest']}（{masses[g['heaviest']]*1000:.1f} kg）")
-    if not g['ok']: raise Stop('重力方向無法判斷：' + g['reason'])
+    if not g['ok']:
+        passed = [r for r in g['candidates'] if r['pass']]
+        if len(names) == 1 and passed:
+            g['chosen'] = max(passed, key=lambda r: r['support_area']); g['ok'] = True
+            log(f"- 單一零件沒有接合面可比較 C4，改依規則取「通過 C1～C3 中支撐面積最大」的方向（{len(passed)} 個方向通過）")
+            rep['flags'].append('單一零件：重力方向依最大支撐面積選定，請確認擺放方向')
+        else:
+            raise Stop('重力方向無法判斷：' + g['reason'])
     ch = g['chosen']; d = ch['down']
     log(f"- **判斷：重力方向 {d}**，支撐零件 {ch['support_parts'][0]}，支撐面 {len(ch['support_faces'])} 個，總面積 {ch['support_area']:.0f} mm²")
     floating = R.connectivity(names, tie_edges, ch['support_parts'])
@@ -164,23 +173,40 @@ def main():
     sup_pid = fp[ch['support_parts'][0]]['id']; sup_fids = [f for _, f in ch['support_faces']]
     rep['judgements']['gravity'] = {k: v for k, v in ch.items() if not k.startswith('_')}
 
-    # ---- 6. 主軸端與工作台面 ----
-    log('\n## 6. 切削力作用點（主軸端與工作台面）')
+    # ---- 6. 受力位置 ----
+    log('\n## 6. 受力位置')
     tt = R.detect_tool_and_table(model, fp, mesh, mine, tol)
     for c in tt['candidates']:
-        log(f"- 候選：{c['spindle_part']} 端面 {c['nose_face']}（圓柱面佔 {c['cyl_ratio']*100:.0f}%），"
+        log(f"- 主軸候選：{c['spindle_part']} 端面 {c['nose_face']}（圓柱面佔 {c['cyl_ratio']*100:.0f}%），"
             + (f"正對 {c['table']['table_part']} 面 {c['table']['table_face']}，距離 {c['table']['gap']:.1f} mm" if c['table'] else '前方沒有正對的零件平面'))
-    if not tt['ok']: raise Stop(tt['reason'])
-    tc = tt['chosen']; tb = tc['table']
-    log(f"- **判斷：主軸 {tc['spindle_part']}（端面 {tc['nose_face']}），工作台 {tb['table_part']}（面 {tb['table_face']}）**")
-    r_nose = math.sqrt(tc['nose_area'] / math.pi)
-    nose_nodes = R.nodes_on_plane(model, mesh[tc['spindle_part']]['nodes'], tc['axis_out'], tc['nose_center'], tol)
-    gface = [f for f in fp[tb['table_part']]['faces'] if f['id'] == tb['table_face']][0]
-    table_nodes = R.face_nodes_near(model, mesh[tb['table_part']]['nodes'], gface['normal'], gface['centroid'], tb['hit'], r_nose, tol)
-    log(f'- 量測相對位移用節點：主軸端 {len(nose_nodes)} 個；工作台面上主軸投影圓（半徑 {r_nose:.1f} mm）內 {len(table_nodes)} 個')
-    if not nose_nodes or not table_nodes: raise Stop('量測節點為 0')
-    rep['judgements']['tool'] = {'spindle': tc['spindle_part'], 'nose_face': tc['nose_face'], 'table': tb['table_part'],
-                                 'table_face': tb['table_face'], 'gap': tb['gap']}
+    if tt['ok']:
+        mode = 'tool'
+        tc = tt['chosen']; tb = tc['table']
+        log(f"- **判斷：主軸 {tc['spindle_part']}（端面 {tc['nose_face']}），工作台 {tb['table_part']}（面 {tb['table_face']}）**")
+        r_nose = math.sqrt(tc['nose_area'] / math.pi)
+        load_part, load_face = tc['spindle_part'], tc['nose_face']
+        nose_nodes = R.nodes_on_plane(model, mesh[load_part]['nodes'], tc['axis_out'], tc['nose_center'], tol)
+        gface = [f for f in fp[tb['table_part']]['faces'] if f['id'] == tb['table_face']][0]
+        table_nodes = R.face_nodes_near(model, mesh[tb['table_part']]['nodes'], gface['normal'], gface['centroid'], tb['hit'], r_nose, tol)
+        log(f'- 量測相對位移用節點：主軸端 {len(nose_nodes)} 個；工作台面上主軸投影圓（半徑 {r_nose:.1f} mm）內 {len(table_nodes)} 個')
+        if not nose_nodes or not table_nodes: raise Stop('量測節點為 0')
+        rep['judgements']['tool'] = {'spindle': load_part, 'nose_face': load_face, 'table': tb['table_part'], 'table_face': tb['table_face'], 'gap': tb['gap']}
+        target = '主軸端與工作台之間的相對'
+    else:
+        mode = 'free'
+        log(f"- 找不到主軸與工作台（{tt['reason']}），改用規則：離支撐面最遠、且未接合的自由平面為受力面")
+        fe = R.detect_free_end(model, fp, mesh, mine, ch['support_faces'], tol)
+        if not fe['ok']: raise Stop(fe['reason'])
+        c = fe['chosen']; load_part, load_face = c['part'], c['face']
+        log(f"- **判斷：受力面 {load_part} 面 {load_face}**，形心 ({', '.join(f'{v:.1f}' for v in c['centroid'])})，"
+            f"距支撐面形心 {c['distance']:.1f} mm，面積 {c['area']:.0f} mm²")
+        nose_nodes = R.nodes_on_plane(model, mesh[load_part]['nodes'], c['normal'], c['centroid'], tol)
+        table_nodes = []
+        log(f'- 量測位移用節點：受力面所在平面上 {len(nose_nodes)} 個')
+        if not nose_nodes: raise Stop('量測節點為 0')
+        rep['flags'].append(f'受力位置依「離支撐最遠的自由面」規則選定（{load_part} 面 {load_face}），請確認是否為實際受力位置')
+        rep['judgements']['tool'] = {'free_end': load_part, 'face': load_face, 'distance': c['distance']}
+        target = '受力面'
 
     # ---- 7. 邊界條件與負載 ----
     log('\n## 7. 邊界條件與工況')
@@ -192,7 +218,6 @@ def main():
         a_id, b_id = R.soft_support_points(model, ch)
         A, B = model['nodes'][a_id], model['nodes'][b_id]
         ab = R.sub(B, A); e = [abs(ab[k]) if k != axis else -1 for k in range(3)]
-        # B 只限制與 AB 垂直、且在支撐平面內的分量中最大的那一軸
         perp_axis = [k for k in range(3) if k != axis and k != max(range(3), key=lambda k: e[k])][0]
         u = ['u1', 'u2', 'u3']
         run(p, f"step = pmx.model.steps.get('Step-1')\n"
@@ -206,16 +231,23 @@ def main():
     pids = [fp[n]['id'] for n in names]
     gv = [G * d[k] for k in range(3)]
     run(p, f"step = pmx.model.steps.get('Step-1')\nstep.loads.add_gravity('LC0_G', pmx.create.selection_by_ids('femodel', 'parts', 'parts', {pids}), f1={gv[0]}, f2={gv[1]}, f3={gv[2]})")
-    sp_pid, tb_pid = fp[tc['spindle_part']]['id'], fp[tb['table_part']]['id']
+    lp_pid = fp[load_part]['id']
     lcs = {'LC0 自重': ['LC0_G']}
     for k, ax in enumerate('XYZ'):
         f = [0.0, 0.0, 0.0]; f[k] = F_CUT
-        run(p, f"step = pmx.model.steps.get('Step-1')\n"
-               f"step.loads.add_surface_traction('LC{k+1}_N', {sel_surf(sp_pid, [tc['nose_face']])}, f1={f[0]}, f2={f[1]}, f3={f[2]})\n"
-               f"step.loads.add_surface_traction('LC{k+1}_T', {sel_surf(tb_pid, [tb['table_face']])}, f1={-f[0]}, f2={-f[1]}, f3={-f[2]})")
-        lcs[f'LC{k+1} 切削力 {ax}'] = [f'LC{k+1}_N', f'LC{k+1}_T']
+        src = f"step = pmx.model.steps.get('Step-1')\nstep.loads.add_surface_traction('LC{k+1}_N', {sel_surf(lp_pid, [load_face])}, f1={f[0]}, f2={f[1]}, f3={f[2]})"
+        if mode == 'tool':
+            src += f"\nstep.loads.add_surface_traction('LC{k+1}_T', {sel_surf(fp[tb['table_part']]['id'], [tb['table_face']])}, f1={-f[0]}, f2={-f[1]}, f3={-f[2]})"
+            lcs[f'LC{k+1} 切削力 {ax}'] = [f'LC{k+1}_N', f'LC{k+1}_T']
+        else:
+            lcs[f'LC{k+1} 單位力 {ax}'] = [f'LC{k+1}_N']
+        run(p, src)
     log(f'- LC0：全部零件自重，g = {gv} mm/s²')
-    log(f'- LC1～LC3：主軸端面 +{F_CUT:.0f} N、工作台面 −{F_CUT:.0f} N，分別沿 X、Y、Z（相對力，量測主軸與工作台間的相對剛性）')
+    if mode == 'tool':
+        log(f'- LC1～LC3：主軸端面 +{F_CUT:.0f} N、工作台面 −{F_CUT:.0f} N，分別沿 X、Y、Z（相對力，量測主軸與工作台間的相對剛性）')
+    else:
+        log(f'- LC1～LC3：受力面 +{F_CUT:.0f} N，分別沿 X、Y、Z（量測受力面相對支撐的剛性）')
+    cut = [ln for ln in lcs if not ln.startswith('LC0')]
 
     # ---- 8. 求解 ----
     log('\n## 8. 求解')
@@ -245,10 +277,10 @@ def main():
         log('  ⚠ 模型存檔失敗（不影響結果）')
 
     # ---- 9. 評估 ----
-    log('\n## 9. 結果')
+    log('\n## 9. 評估')
     allow = {n: MATS[asg[n]]['allowable'] for n in names}
     cls = {n: MATS[asg[n]]['class'] for n in names}
-    out = {}
+    out = {}; blocks = None; up = [-v for v in d]
     for vn, ln, jn in jobs:
         inp, frd = os.path.join(OUT, jn + '.inp'), os.path.join(OUT, jn + '.frd')
         with open(frd, 'rb') as fb:
@@ -262,69 +294,144 @@ def main():
                'exclude_bc_radius': None, 'hotspot_top_percent': 5, 'hotspot_cluster_distance': 0.05 * diag, 'regions': []}
         r = fea_eval.evaluate(inp, frd, cfg)
         fea_eval.write_outputs(r, os.path.join(OUT, jn + '_評估'), cfg)
+        for w in r['warnings']: log(f'  ⚠ {jn}：{w}')
+        if blocks is None: blocks = R.region_blocks(r['elements'], names, JUDGE['region_divisions'])
+        ese = {e['eid']: e['se'] for e in r['elements']}
         rec = {'parts': {n: {k: r['parts'][n][k] for k in ('SE_share', 'mass_share', 'eff', 'UR', 'stress_p99', 'strain_energy', 'mass')} for n in names},
                'total_se': r['total_se'], 'work': r['work_check'], 'warnings': r['warnings'],
-               'hotspots': {n: [{'centroid': h['centroid'], 'share': h['share_of_part']} for h in r['hotspots'][n][:2]] for n in names}}
+               'blocks': {key: sum(ese.get(e, 0) for e in b['eids']) / r['total_se'] * 100 for key, b in blocks.items()}}
         if not grav:
             U = fea_eval.read_frd(frd)['DISP']; k = 'XYZ'.index(ln[-1])
-            un = sum(U[i][k] for i in nose_nodes) / len(nose_nodes); ut = sum(U[i][k] for i in table_nodes) / len(table_nodes)
+            un = sum(U[i][k] for i in nose_nodes) / len(nose_nodes)
+            ut = sum(U[i][k] for i in table_nodes) / len(table_nodes) if table_nodes else 0.0
             rec['delta_rel'] = un - ut; rec['k_N_per_um'] = F_CUT / (un - ut) / 1000.0 if un != ut else None
         out[(vn, ln)] = rec
+    vns = list(variants)
+    V0 = vns[0]
 
     # ---- 10. 判斷 ----
-    for vn in variants:
-        log(f'\n### 支撐：{vn}')
-        log('| 工況 | 相對位移 (μm) | 相對剛性 (N/μm) | 總應變能 / 外力功 |'); log('|---|---|---|---|')
+    lv = JUDGE['levels']
+    def level(sh):
+        for L in lv:
+            if sh >= L['min_share']: return L
+        return lv[-1]
+    avg = {vn: {n: sum(out[(vn, ln)]['parts'][n]['SE_share'] for ln in cut) / len(cut) for n in names} for vn in vns}
+    bavg = {vn: {key: sum(out[(vn, ln)]['blocks'][key] for ln in cut) / len(cut) for key in blocks} for vn in vns}
+    rank_parts = {vn: sorted(names, key=lambda n: -avg[vn][n]) for vn in vns}
+    rank_blocks = sorted(blocks, key=lambda k: -bavg[V0][k])
+    g0 = out[(V0, 'LC0 自重')]['parts']
+    alpha = JUDGE['stiffen_factor_for_estimate']
+    red = 1 - 1 / alpha
+    # 零件在「向上」方向的位置描述
+    def vpos(key):
+        b = blocks[key]['bounds']; part = key[0]
+        es = [blocks[k]['bounds'] for k in blocks if k[0] == part]
+        ax = max(range(3), key=lambda k: abs(up[k]))
+        lo = min(x[2*ax] for x in es); hi = max(x[2*ax+1] for x in es)
+        c = (b[2*ax] + b[2*ax+1]) / 2
+        f = (c - lo) / (hi - lo) if hi > lo else 0.5
+        if up[ax] < 0: f = 1 - f
+        return '下段' if f < 1/3 else ('中段' if f < 2/3 else '上段')
+    S = []
+    def sl(x=''): S.append(str(x))
+    sl(f'# 結構剛性評估報告：{os.path.basename(STEP)}')
+    sl(f'產生時間：{time.strftime("%Y-%m-%d %H:%M")}　｜　工具：FEA-AI auto_analyze（PrePoMax 3.0.1 / CalculiX）')
+    sl('\n## 一、結論摘要')
+    k0 = {ln: out[(V0, ln)].get('k_N_per_um') for ln in cut}
+    sl(f'- 評估對象：{target}剛性（三個方向各施加 {F_CUT:.0f} N）')
+    sl('- 剛性：' + '、'.join(f"{ln[-1]} 向 {k0[ln]:.1f} N/μm" for ln in cut if k0[ln]) + f'（{V0}）')
+    weak = min(cut, key=lambda ln: k0[ln] or 1e30)
+    sl(f'- 最弱方向：**{weak[-1]} 向**（{k0[weak]:.1f} N/μm）')
+    top = rank_blocks[:JUDGE['top_regions']]
+    b1 = top[0]; b2 = top[1] if len(top) > 1 else None
+    sl(f'- **最需要修改的位置：{b1[0]} {vpos(b1)}**，佔整體變形 **{bavg[V0][b1]:.1f}%**（三方向平均）；'
+       f'此處剛性提高 {int(round((alpha-1)*100))}%，{target}變形約減少 {bavg[V0][b1]*red:.1f}%')
+    if b2: sl(f'- 第二位置：{b2[0]} {vpos(b2)}，佔 {bavg[V0][b2]:.1f}%；剛性提高 {int(round((alpha-1)*100))}% → 變形約減少 {bavg[V0][b2]*red:.1f}%')
+    p1 = rank_parts[V0][0]
+    if len(names) > 1:
+        p2 = rank_parts[V0][1]
+        sl(f'- 零件層級：第一優先 **{p1}**（{avg[V0][p1]:.1f}%），第二優先 **{p2}**（{avg[V0][p2]:.1f}%）')
+    else:
+        sl(f'- 單一零件：{p1}，以下位置排名即為零件內需要修改的位置')
+    if len(vns) > 1:
+        # 位置比較允許 1 個百分點的差（對稱位置佔比相同時，排名順序可能互換）
+        top1 = sorted(bavg[vns[1]], key=lambda k: -bavg[vns[1]][k])[:2]
+        thr = bavg[V0][rank_blocks[min(1, len(rank_blocks)-1)]] - 1.0
+        same = rank_parts[vns[0]][:2] == rank_parts[vns[1]][:2] and all(bavg[V0][k] >= thr for k in top1)
+        sl(f'- 兩種支撐條件下前兩名{"相同 → 結論不受安裝條件影響" if same else "不同 → 結論受安裝條件影響，請以實際安裝方式確認"}')
+    for n in names:
+        if g0[n]['UR'] is not None and g0[n]['UR'] >= 1: sl(f'- ⚠ {n} 自重下強度利用率 {g0[n]["UR"]:.2f} ≥ 1，必須處理')
+    lowe = [n for n in names if g0[n]['mass_share'] and avg[V0][n] / g0[n]['mass_share'] < JUDGE['lightweight_eff_below']
+            and (g0[n]['UR'] is None or g0[n]['UR'] < JUDGE['lightweight_ur_below'])]
+    if lowe: sl(f'- 可檢討減重（剛性貢獻低於質量比例，且自重強度利用率低）：{", ".join(lowe)}')
+    for fl in rep['flags']: sl(f'- ⚠ {fl}')
+    if missing: sl(f'- ⚠ {len(missing)} 個零件名稱沒有材料代號，使用預設材料 {DEFAULT}：{", ".join(missing)}')
+
+    sl('\n## 二、修改位置建議總表')
+    sl(f'每個零件依形狀切成格子（最長邊 {JUDGE["region_divisions"]} 等分），計算每格應變能佔整體的比例。佔比 = 該位置對{target}變形的貢獻。')
+    sl(f'等級門檻（rules/judgement.json，可自行修改）：' + '；'.join(f"{L['name']} ≥ {L['min_share']}% {L['action']}" for L in lv[:-1]) + f"；{lv[-1]['name']} 其餘 {lv[-1]['action']}")
+    sl('')
+    sl(f'| 排名 | 零件 | 位置 | 座標範圍 X / Y / Z（mm，元素形心） | ' + ' | '.join(f'{ln[-1]} 向' for ln in cut)
+       + f' | 平均佔比 | 累計 | 等級 | 剛性 +{int(round((alpha-1)*100))}% 時變形減少 |')
+    sl('|' + '---|' * (9 + len(cut)))
+    cum = 0
+    for i, key in enumerate(top, 1):
+        b = blocks[key]['bounds']; sh = bavg[V0][key]; cum += sh; L = level(sh)
+        sl(f"| {i} | {key[0]} | {vpos(key)} | {b[0]:.0f}~{b[1]:.0f} / {b[2]:.0f}~{b[3]:.0f} / {b[4]:.0f}~{b[5]:.0f} | "
+           + ' | '.join(f"{out[(V0, ln)]['blocks'][key]:.1f}%" for ln in cut)
+           + f" | **{sh:.1f}%** | {cum:.1f}% | {L['name']} {L['action']} | {sh*red:.1f}% |")
+    sl(f'\n前 {len(top)} 個位置合計佔 {cum:.1f}%（共 {len(blocks)} 個位置）。')
+
+    sl('\n## 三、零件層級')
+    for vn in vns:
+        sl(f'\n### 支撐：{vn}')
+        sl(f'| 工況 | {"相對" if mode == "tool" else ""}位移 (μm) | 剛性 (N/μm) | 總應變能 / 外力功 (N·mm) |'); sl('|---|---|---|---|')
         for ln in lcs:
             rr = out[(vn, ln)]
             dr = '—' if 'delta_rel' not in rr else f"{rr['delta_rel']*1000:.3f}"
             kk = '—' if not rr.get('k_N_per_um') else f"{rr['k_N_per_um']:.3f}"
             wk = '—' if rr['work'] is None else f"{rr['work']:.4g}"
-            log(f"| {ln} | {dr} | {kk} | {rr['total_se']:.4g} / {wk} |")
-        log('\n| 零件 | 材料 | 質量 kg | 質量佔比 | 剛性貢獻 LC1 X | LC2 Y | LC3 Z | 平均 | 效率比 | 自重利用率 |')
-        log('|---|---|---|---|---|---|---|---|---|---|')
-        avg = {}
-        for n in names:
-            sh = [out[(vn, ln)]['parts'][n]['SE_share'] for ln in lcs if not ln.startswith('LC0')]
-            avg[n] = sum(sh) / len(sh)
-        for n in sorted(names, key=lambda n: -avg[n]):
-            g0 = out[(vn, 'LC0 自重')]['parts'][n]
-            ms = g0['mass_share']
-            shs = ' | '.join(f"{out[(vn, ln)]['parts'][n]['SE_share']:.1f}%" for ln in lcs if not ln.startswith('LC0'))
-            ur = '—' if g0['UR'] is None else f"{g0['UR']:.3f}"
-            ef = f"{avg[n]/ms:.2f}" if ms else '—'
-            log(f"| {n} | {asg[n]}{'（預設）' if n in missing else ''} | {masses[n]*1000:.1f} | {ms:.1f}% | {shs} | **{avg[n]:.1f}%** | {ef} | {ur} |")
-        rep.setdefault('ranking', {})[vn] = sorted(names, key=lambda n: -avg[n])
-        rep.setdefault('avg_share', {})[vn] = avg
-    log('\n## 10. 結論')
-    rk = rep['ranking']; vns = list(rk)
-    first, second = rk[vns[0]][0], rk[vns[0]][1]
-    log(f'- 剛性貢獻（切削力 3 方向平均）第一優先：**{first}**（{rep["avg_share"][vns[0]][first]:.1f}%），第二優先：**{second}**（{rep["avg_share"][vns[0]][second]:.1f}%）')
-    if len(vns) > 1:
-        same = rk[vns[0]][:2] == rk[vns[1]][:2]
-        log(f'- 兩種支撐的前兩名{"相同 → 結論不受安裝條件影響" if same else "不同 → 結論取決於安裝條件，需實際安裝方式確認"}：'
-            + '；'.join(f'{v}：{rk[v][0]}、{rk[v][1]}' for v in vns))
-        rep['support_agree'] = same
-    g0 = out[(vns[0], 'LC0 自重')]['parts']
-    for n in names:
-        if g0[n]['UR'] is not None and g0[n]['UR'] >= 1: log(f'- ⚠ {n} 自重下強度利用率 {g0[n]["UR"]:.2f} ≥ 1，必須處理')
-    lowe = [n for n in names if rep['avg_share'][vns[0]][n] / g0[n]['mass_share'] < 1]
-    if lowe: log(f'- 剛性貢獻低於質量比例（效率比 < 1，可優先檢討減重）：{", ".join(lowe)}')
-    for n in (first, second):
-        hs = out[(vns[0], 'LC1 切削力 X')]['hotspots'][n]
-        log(f'- {n} 應變能集中區（LC1 X，前 2）：' + '；'.join(f"({', '.join(f'{v:.0f}' for v in h['centroid'])}) 佔該零件 {h['share']:.1f}%" for h in hs))
-    log('\n## 計算依據與限制')
-    log('- 剛性貢獻 = 各零件應變能 ÷ 總應變能（線性靜力、以力加載時等於對主軸–工作台相對柔度的貢獻佔比）。效率比 = 剛性貢獻 ÷ 質量佔比（本工具定義的排序指標）。')
-    log('- 強度利用率只算自重工況（P99 應力 ÷ 容許值）；切削力工況使用 1000 N 單位力，只用於剛性，不判斷強度。')
-    log('- 接合一律用 Tie（假設接合面不分離、不滑動）；導軌、螺栓的局部剛性未建模。')
-    log('- 材料數值與出處見 rules/materials.json。')
-    json.dump({'report': rep, 'results': {f'{a}|{b}': v for (a, b), v in out.items()}}, open(os.path.join(OUT, 'summary.json'), 'w', encoding='utf-8'),
-              ensure_ascii=False, indent=1, default=str)
+            sl(f"| {ln} | {dr} | {kk} | {rr['total_se']:.4g} / {wk} |")
+        sl('\n| 零件 | 材料 | 質量 kg | 質量佔比 | ' + ' | '.join(f'{ln[-1]} 向' for ln in cut) + ' | 平均剛性貢獻 | 效率比 | 自重利用率 | 等級 |')
+        sl('|' + '---|' * (8 + len(cut)))
+        for n in rank_parts[vn]:
+            gg = out[(vn, 'LC0 自重')]['parts'][n]; ms = gg['mass_share']
+            ur = '—' if gg['UR'] is None else f"{gg['UR']:.3f}"
+            ef = f"{avg[vn][n]/ms:.2f}" if ms else '—'
+            sl(f"| {n} | {asg[n]}{'（預設）' if n in missing else ''} | {masses[n]*1000:.1f} | {ms:.1f}% | "
+               + ' | '.join(f"{out[(vn, ln)]['parts'][n]['SE_share']:.1f}%" for ln in cut)
+               + f" | **{avg[vn][n]:.1f}%** | {ef} | {ur} | {level(avg[vn][n])['name']} |")
+
+    sl('\n## 四、計算原理與驗證方法')
+    sl('所有數字都能用下列公式由報告與結果檔自行驗算。')
+    sl(f'1. **剛性**：k = F ÷ δ。F = {F_CUT:.0f} N；δ = 受力面節點在受力方向的平均位移' + ('（主軸端平均 − 工作台面主軸投影圓內平均）' if mode == 'tool' else '') + '。單位 N/μm。')
+    sl('2. **變形能量守恆檢查**：總應變能 U 應等於外力功 ½ΣF·u（表中兩欄）；也可用 ½·F·δ 估算。')
+    sl('3. **佔比（剛性貢獻）**：s_i = U_i ÷ U。U_i 為零件或位置內元素的應變能 ∫½σ:ε dV：由節點位移以元素形函數求積分點應變 ε、σ = Dε，高斯積分（與 CalculiX 元素內能 ELSE 相同，M-001 逐零件比對差 < 0.001%）。'
+       '線性靜力、以力加載時 U = ½·F·δ，所以 s_i 就是該處對變形 δ 的貢獻比例。')
+    sl(f'4. **修改效果估算**：該處剛性提高為 α 倍（例如 E×α 或等效加厚），變形減少約 s_i ×（1 − 1/α）；α = {alpha} → s_i × {red*100:.1f}%；α→∞（完全剛化）→ 最多減少 s_i。')
+    sl('   驗證紀錄 M-001：立柱 E×1.1，預估 −3.40%，CalculiX 實算 −3.41%；主軸 E×1.1，預估 −2.30%，實算 −2.31%。')
+    sl('5. **效率比** = 剛性貢獻 ÷ 質量佔比：> 1 表示單位重量承擔較多變形（補強效益高）；< 1 表示相對其重量貢獻少（減重檢討對象）。此為本工具定義的排序指標。')
+    sl('6. **強度利用率** = 零件 P99 應力 ÷ 容許值（鋼 von Mises／降伏強度，鑄鐵 最大主應力／抗拉強度），只算自重工況；切削力工況為單位力，不判斷強度。')
+    sl('7. **自行驗證步驟**：')
+    sl('   - 在 PrePoMax 開 `auto_model.pmx`，開對應工作（例如 AUTO_V0_LC1）的結果，查受力面節點位移，算 k = F/δ，與表中比對。')
+    sl('   - 佔比的獨立檢查：在該工作 .inp 的 *End step 前加 `*EL PRINT, ELSET=<零件名>, TOTALS=ONLY` 與下一行 `ELSE`，用 CalculiX 求解，.dat 中各零件 total internal energy 除以總和即為佔比。')
+    sl('   - 修改效果檢查：把某零件 E 改為 1.1 倍重算，變形變化應接近第 4 點估算值。')
+
+    sl('\n## 五、計算條件與限制')
+    sl('- 接合一律用 Tie（假設接合面不分離、不滑動）；導軌、螺栓、軸承的局部剛性未建模。')
+    sl('- 材料數值與出處：rules/materials.json；判斷門檻：rules/judgement.json。')
+    sl('- 自動判斷過程（零件命名、材料、網格、接合、重力方向、支撐、受力位置）見附錄。')
+    REPORT_HEAD[:] = S
+
+    json.dump({'report': rep, 'results': {f'{a}|{b}': {**v, 'blocks': {'|'.join(map(str, k)): s for k, s in v['blocks'].items()}} for (a, b), v in out.items()},
+               'blocks': {'|'.join(map(str, k)): {'bounds': b['bounds'], 'n_elem': len(b['eids'])} for k, b in blocks.items()}},
+              open(os.path.join(OUT, 'summary.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=1, default=str)
     try:
         run(p, f"pmx.view.save_image(r'{os.path.join(OUT, 'model.png')}')")
     except Stop: pass
     log(f'\n結果資料夾：{OUT}')
     return OUT
+
 
 if __name__ == '__main__':
     outdir = None
@@ -336,4 +443,5 @@ if __name__ == '__main__':
         steps = sorted(glob.glob(os.path.join(INPUT, '*.stp')) + glob.glob(os.path.join(INPUT, '*.step')), key=os.path.getmtime)
         od = outdir or (os.path.join(RESULTS, os.path.splitext(os.path.basename(steps[-1]))[0]) if steps else RESULTS)
         os.makedirs(od, exist_ok=True)
-        open(os.path.join(od, '報告.md'), 'w', encoding='utf-8').write('\n'.join(LOG) + '\n')
+        body = REPORT_HEAD + (['\n---\n\n# 附錄：自動判斷過程'] if REPORT_HEAD else []) + LOG
+        open(os.path.join(od, '報告.md'), 'w', encoding='utf-8').write('\n'.join(body) + '\n')

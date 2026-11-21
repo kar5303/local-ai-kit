@@ -1,0 +1,30 @@
+{
+  "_說明": "判斷門檻與報告設定（本工具預設值，可自行修改）。share 為該位置/零件佔整體變形（應變能）的百分比。",
+  "levels": [
+    {
+      "name": "A",
+      "min_share": 10,
+      "action": "優先修改"
+    },
+    {
+      "name": "B",
+      "min_share": 5,
+      "action": "建議修改"
+    },
+    {
+      "name": "C",
+      "min_share": 2,
+      "action": "視需要"
+    },
+    {
+      "name": "D",
+      "min_share": 0,
+      "action": "不需修改"
+    }
+  ],
+  "region_divisions": 4,
+  "top_regions": 10,
+  "stiffen_factor_for_estimate": 1.1,
+  "lightweight_eff_below": 1.0,
+  "lightweight_ur_below": 0.5
+}
