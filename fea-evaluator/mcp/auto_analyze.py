@@ -66,23 +66,37 @@ def main():
     run(p, f"pmx.save(r'{os.path.join(OUT, 'auto_model.pmx')}')")   # 標記為本工具建立的模型
     run(p, f"pmx.import_file(r'{STEP}')")
     gparts = pyj(p, "[[n, list(pmx.model.geometry.parts.get(n).get_bounding_box())] for n in pmx.model.geometry.parts.get_names()]")
-    sp = step_names.read_step_parts(STEP)
-    mp, how = step_names.match_parts(sp, [(n, b) for n, b in gparts])
-    log(f'- STEP 實體 {len(sp)} 個，PrePoMax 零件 {len(gparts)} 個')
-    if not mp: raise Stop(f'無法把 STEP 名稱對應到 PrePoMax 零件：{how}')
-    new = step_names.unique_names(mp)
-    run(p, '\n'.join(f"pmx.model.geometry.parts.rename('{a}', '{b}')" for a, b in new.items() if a != b) or 'pass')
-    log(f'- 對應方式：{how}')
-    for a, b in new.items(): log(f'  - {a} → {b}')
+    try:
+        sp = step_names.read_step_parts(STEP)
+        mp, how = step_names.match_parts(sp, [(n, b) for n, b in gparts])
+        log(f'- STEP 實體 {len(sp)} 個，PrePoMax 零件 {len(gparts)} 個')
+    except Exception as e:
+        mp, how = None, f'讀取 STEP 零件名稱失敗（{type(e).__name__}: {e}）'
+    if mp:
+        new = step_names.unique_names(mp)
+        run(p, '\n'.join(f"pmx.model.geometry.parts.rename('{a}', '{b}')" for a, b in new.items() if a != b) or 'pass')
+        log(f'- 對應方式：{how}')
+        for a, b in new.items(): log(f'  - {a} → {b}')
+    else:
+        new = {n: n for n, _ in gparts}
+        log(f'- ⚠ 無法取得 CAD 零件名稱：{how}。沿用 PrePoMax 名稱 {", ".join(new)}')
     rep['judgements']['naming'] = {'how': how, 'map': new}
 
     # ---- 2. 材料 ----
-    log('\n## 2. 材料（依零件名稱的材料代號，數值與出處見 rules/materials.json）')
+    log('\n## 2. 材料（依零件名稱的材料代號；沒有代號的零件用預設材料。數值與出處見 rules/materials.json）')
     MATS = R.load_materials(MAT_FILE)
+    DEFAULT = json.load(open(MAT_FILE, encoding='utf-8')).get('default_when_no_code')
     names = list(new.values())
     asg, missing = R.assign_materials(names, MATS)
-    for n in names: log(f'- {n}：{asg.get(n, "（名稱中沒有材料代號）")}')
-    if missing: raise Stop(f'以下零件名稱沒有材料代號（{", ".join(MATS)}），無法決定材料：{missing}')
+    if missing:
+        if not DEFAULT or DEFAULT not in MATS:
+            raise Stop(f'以下零件名稱沒有材料代號，且 rules/materials.json 的 default_when_no_code 未設定或不在材料表中：{missing}')
+        for n in missing: asg[n] = DEFAULT
+    for n in names: log(f'- {n}：{asg[n]}' + ('　**（名稱中沒有材料代號，使用預設材料）**' if n in missing else ''))
+    if missing:
+        log(f'- ⚠ {len(missing)}/{len(names)} 個零件使用預設材料 {DEFAULT}。剛性貢獻佔比與質量會受材料影響；'
+            f'要改材料，在零件名稱加代號（{", ".join(MATS)}）後重跑，或修改 default_when_no_code。')
+    rep['default_material_parts'] = missing
     for code in sorted(set(asg.values())):
         mt = MATS[code]
         run(p, f"pmx.model.materials.add('{code}', [pmx.create.elastic({mt['E']}, {mt['nu']}), pmx.create.density({mt['density']})])")
@@ -279,7 +293,7 @@ def main():
             shs = ' | '.join(f"{out[(vn, ln)]['parts'][n]['SE_share']:.1f}%" for ln in lcs if not ln.startswith('LC0'))
             ur = '—' if g0['UR'] is None else f"{g0['UR']:.3f}"
             ef = f"{avg[n]/ms:.2f}" if ms else '—'
-            log(f"| {n} | {asg[n]} | {masses[n]*1000:.1f} | {ms:.1f}% | {shs} | **{avg[n]:.1f}%** | {ef} | {ur} |")
+            log(f"| {n} | {asg[n]}{'（預設）' if n in missing else ''} | {masses[n]*1000:.1f} | {ms:.1f}% | {shs} | **{avg[n]:.1f}%** | {ef} | {ur} |")
         rep.setdefault('ranking', {})[vn] = sorted(names, key=lambda n: -avg[n])
         rep.setdefault('avg_share', {})[vn] = avg
     log('\n## 10. 結論')
