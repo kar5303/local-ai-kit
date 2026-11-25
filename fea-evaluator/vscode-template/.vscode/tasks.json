@@ -2,11 +2,27 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "FEA: 分析目前 PrePoMax 模型（求解＋評估）",
+      "label": "FEA: 全自動分析 input 資料夾的 STEP / .pmx",
       "type": "process",
       "command": "${command:python.interpreterPath}",
       "args": [
-        "run_current_model.py"
+        "auto_analyze.py"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/mcp",
+        "env": {
+          "PYTHONUTF8": "1"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "FEA: 全自動分析 PrePoMax 目前開著的模型",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": [
+        "auto_analyze.py",
+        "--current"
       ],
       "options": {
         "cwd": "${workspaceFolder}/mcp",
@@ -25,6 +41,21 @@
       ],
       "options": {
         "cwd": "${workspaceFolder}",
+        "env": {
+          "PYTHONUTF8": "1"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "FEA: 分析目前 PrePoMax 模型（求解＋評估）",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": [
+        "run_current_model.py"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/mcp",
         "env": {
           "PYTHONUTF8": "1"
         }
