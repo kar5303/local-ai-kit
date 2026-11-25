@@ -143,13 +143,15 @@ def detect_gravity(model, fp, mp, masses, ties, tol):
     """
     候選方向 = 所有平面的法向（合併平行者）。對每個候選「向下」方向 d：
       支撐面 = 沿 d 最遠處（最低處）的平面，可分屬多個零件
-      C1 支撐面存在，且支撐節點至少圍成一個面（不是只有一條線）
-      C2 支撐零件包含最重的零件（機台站在底座上；零件同重時任一即可）
-      C3 組件重心投影落在支撐節點凸包內（站得住），記錄邊界餘裕 m
-      C4 零件接合面中，法向與 d 平行的面積比例（承重接合面垂直於重力）
+      C1 支撐面存在，且支撐節點至少圍成一個面（不是只有一條線）　［必要］
+      C3 組件重心投影落在支撐節點凸包內（站得住），記錄邊界餘裕 m　［必要］
+      F  支撐面是分開的腳座（≥2 塊互不相連的支撐面，且支撐範圍面積 ≥ 2 倍支撐面積；例如墊腳、桌腳、支座）　［排序第一］
+      C2 支撐零件包含最重的零件（機台站在底座上）　［排序第三］
+      C4 零件接合面中，法向與 d 平行的面積比例（承重接合面垂直於重力）　［排序第二，差 0.15 以內視為相同］
       S  穩定指數 = 餘裕 m ÷ 重心高度 h（傾倒前可承受的水平加速度比，越大越穩）
-    選擇：通過 C1～C3 者中，先看 C4：與最大 C4 相差 0.15 以內的方向再比 S，取 S 最大；
-          前兩名 S 相差不到 10% 視為無法區分，停止。
+    選擇：通過 C1、C3 者中，依 F → C4 → C2 → S（最大）排序取第一。
+          前兩名 S 相差不到 10% 時照樣選 S 較大者，但標示請確認（可用 rules/override.json 指定）。
+          沒有方向通過 C1、C3 時，取支撐面積最大的方向並標示。
     """
     dirs = []
     for p in fp:
@@ -175,26 +177,61 @@ def detect_gravity(model, fp, mp, masses, ties, tol):
         hull = convex_hull([(dot(model['nodes'][i], e1), dot(model['nodes'][i], e2)) for i in ids])
         r['C1_support'] = bool(sup) and len(hull) >= 3
         r['C2_heaviest'] = any(h in sparts for h in heaviest)
+        ha = 0.0
+        if len(hull) >= 3:
+            ha = 0.5 * abs(sum(hull[i][0]*hull[(i+1) % len(hull)][1] - hull[(i+1) % len(hull)][0]*hull[i][1] for i in range(len(hull))))
+        r['hull_area'] = ha
+        r['pad_ratio'] = ha / r['support_area'] if r['support_area'] else 0.0
+        # 支撐面分群：支撐節點依間距分群（格點相鄰即相連；格距 = 2.5 × 平均節點間距），群數 = 互不相連的支撐塊數
+        P2 = [(dot(model['nodes'][i], e1), dot(model['nodes'][i], e2)) for i in ids]
+        if P2 and r['support_area'] > 0:
+            hcell = 2.5 * math.sqrt(r['support_area'] / len(P2))
+            cells = {(int(math.floor(x / hcell)), int(math.floor(y / hcell))) for x, y in P2}
+            seen = set(); nreg = 0
+            for c0 in cells:
+                if c0 in seen: continue
+                nreg += 1; st = [c0]; seen.add(c0)
+                while st:
+                    cx, cy = st.pop()
+                    for dx in (-1, 0, 1):
+                        for dy in (-1, 0, 1):
+                            nb = (cx + dx, cy + dy)
+                            if nb in cells and nb not in seen: seen.add(nb); st.append(nb)
+            r['support_regions'] = nreg
+        else:
+            r['support_regions'] = 0
+        r['feet'] = r['support_regions'] >= 2 and r['pad_ratio'] >= 2.0
         r['C3_margin'] = hull_margin(hull, (dot(cg, e1), dot(cg, e2))) if r['C1_support'] else None
         r['C3_stable'] = r['C3_margin'] is not None and r['C3_margin'] > 0
         r['cg_height'] = ext - dot(cg, d)
         r['stability'] = (r['C3_margin'] / r['cg_height']) if r['C3_stable'] and r['cg_height'] > 0 else None
         r['C4_bearing_ratio'] = sum(t['area'] for t in ties if abs(dot(t['normal'], d)) > PAR) / tie_area
-        r['pass'] = r['C1_support'] and r['C2_heaviest'] and r['C3_stable']
+        r['pass'] = r['C1_support'] and r['C3_stable']
         r['_hull'] = hull; r['_e'] = (e1, e2); r['_ext'] = ext; r['_ids'] = ids
         rows.append(r)
     ok = [r for r in rows if r['pass']]
-    res = {'cg': cg, 'heaviest': heaviest[0], 'candidates': rows}
+    res = {'cg': cg, 'heaviest': heaviest[0], 'candidates': rows, 'flags': []}
     if not ok:
-        res.update(ok=False, reason='沒有任何方向同時滿足 C1～C3（有支撐面、支撐零件含最重零件、重心落在支撐範圍內）')
+        # 沒有方向同時滿足 C1、C3（重心在支撐範圍外的懸伸結構等）：取支撐面積最大的方向繼續，並標示
+        alt = [r for r in rows if r['C1_support']]
+        if not alt:
+            res.update(ok=False, reason='模型沒有任何可當支撐面的平面')
+            return res
+        best = max(alt, key=lambda r: r['support_area'])
+        res['flags'].append('沒有方向能讓重心落在支撐範圍內，改取支撐面積最大的方向，請確認擺放方向')
+        res.update(ok=True, chosen=best, rule='最大支撐面積（備用）', shortlist=[best])
         return res
-    c4 = max(r['C4_bearing_ratio'] for r in ok)
-    near = sorted([r for r in ok if r['C4_bearing_ratio'] >= c4 - 0.15], key=lambda r: -r['stability'])
+    # 選擇順序：F（分開的腳座）優先 → C4（承重接合面比例，與最大值差 0.15 以內）→ C2（含最重零件）→ 穩定指數 S
+    pool = [r for r in ok if r['feet']] or ok
+    c4 = max(r['C4_bearing_ratio'] for r in pool)
+    pool = [r for r in pool if r['C4_bearing_ratio'] >= c4 - 0.15]
+    near = sorted(pool, key=lambda r: (not r['C2_heaviest'], -r['stability']))
     res['shortlist'] = near
-    if len(near) > 1 and near[1]['stability'] >= 0.9 * near[0]['stability']:
-        res.update(ok=False, reason=f"通過的方向中，前兩名穩定指數相差不到 10%（{near[0]['stability']:.3f} vs {near[1]['stability']:.3f}），無法區分")
-        return res
-    res.update(ok=True, chosen=near[0], rule=('C4' if len(near) == 1 else 'C4+S'))
+    if len(near) > 1 and near[1]['feet'] == near[0]['feet'] and near[1]['C2_heaviest'] == near[0]['C2_heaviest'] \
+            and near[1]['stability'] >= 0.9 * near[0]['stability']:
+        res['flags'].append(f"前兩名方向條件相同且穩定指數接近（{near[0]['down']} S={near[0]['stability']:.3f}、{near[1]['down']} S={near[1]['stability']:.3f}），"
+                            f"已取 S 較大者；若擺放方向不對，請在 rules/override.json 指定 gravity_down")
+    res.update(ok=True, chosen=near[0], rule='F→C4→C2→S')
     return res
 
 def soft_support_points(model, chosen):
