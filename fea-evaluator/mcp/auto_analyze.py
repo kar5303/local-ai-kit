@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 全自動組件分析：把 STEP 或 PrePoMax 模型（.pmx）放進 FEA-AI\\input\\，執行本程式（VS Code 任務「FEA: 全自動分析 input 資料夾的 STEP / .pmx」）。
+--current：直接使用 PrePoMax 目前開著的模型（例如在 PrePoMax 中用匯入功能讀進的 STEP），先另存副本到 results，再照同樣流程分析。
 .pmx：開啟後立即另存到 results（原檔不動），沿用模型的零件、網格、材料、截面、接合；原有分析步在副本中停用，另建本工具的分析步。
 流程：匯入 → 依 STEP 名稱命名零件 → 材料（名稱代號）→ 網格 → Tie（PrePoMax 接合面搜尋）
       → 重力方向與支撐面（幾何判斷）→ 主軸端與工作台面（幾何判斷）
@@ -48,22 +49,45 @@ def input_files():
         fs += glob.glob(os.path.join(INPUT, ext))
     return sorted(set(fs), key=os.path.getmtime)
 
+CURRENT = '--current' in sys.argv
+OUTDIR = [None]
+
+def journal_step(p):
+    """從 PrePoMax 指令歷程找出最後匯入的 STEP 檔路徑（使用者在 PrePoMax 中手動匯入時用）"""
+    d = jl(p.call('get_history', include_journal=True)[0])
+    j = d.get('journal')
+    txt = j.get('text') or j.get('content') or json.dumps(j) if isinstance(j, dict) else (j or json.dumps(d, ensure_ascii=False))
+    if isinstance(j, dict) and j.get('fileName') and os.path.exists(j['fileName']):
+        txt = open(j['fileName'], encoding='utf-8', errors='replace').read()
+    import re as _re
+    hits = _re.findall(r"""import_file\(\s*r?['"]([^'"]+\.(?:stp|step))['"]""", txt, _re.I)
+    return hits[-1].replace('\\\\', '\\') if hits else None
+
 def main():
-    fs = input_files()
-    if not fs: raise Stop(f'input 資料夾沒有 .stp/.step/.pmx：{INPUT}')
-    SRC = fs[-1]; name = os.path.splitext(os.path.basename(SRC))[0]
-    MODE = 'pmx' if SRC.lower().endswith('.pmx') else 'step'
-    OUT = os.path.join(RESULTS, name); os.makedirs(OUT, exist_ok=True)
-    log(f'# 全自動分析：{os.path.basename(SRC)}'); log(f'時間：{time.strftime("%Y-%m-%d %H:%M")}')
-    log(f'輸入類型：{"PrePoMax 模型（.pmx）" if MODE == "pmx" else "STEP 幾何"}')
-    rep = {'source_file': SRC, 'mode': MODE, 'judgements': {}, 'flags': []}
     p = PrePoMax()
+    if CURRENT:
+        st0 = jl(p.call('get_status')[0]); m0 = st0.get('model', {})
+        if not m0.get('isOpen'): raise Stop('PrePoMax 沒有開啟的模型')
+        SRC = m0.get('fileName') or ''
+        stepf = journal_step(p)
+        name = os.path.splitext(os.path.basename(SRC or stepf or m0.get('name') or 'current_model'))[0]
+        MODE = 'current'
+    else:
+        fs = input_files()
+        if not fs: raise Stop(f'input 資料夾沒有 .stp/.step/.pmx：{INPUT}')
+        SRC = fs[-1]; name = os.path.splitext(os.path.basename(SRC))[0]
+        MODE = 'pmx' if SRC.lower().endswith('.pmx') else 'step'
+        stepf = None
+    OUT = os.path.join(RESULTS, name); os.makedirs(OUT, exist_ok=True); OUTDIR[0] = OUT
+    log(f'# 全自動分析：{os.path.basename(SRC) if SRC else name}'); log(f'時間：{time.strftime("%Y-%m-%d %H:%M")}')
+    log('輸入類型：' + {'pmx': 'PrePoMax 模型（.pmx）', 'step': 'STEP 幾何', 'current': 'PrePoMax 目前開著的模型'}[MODE])
+    rep = {'source_file': SRC, 'mode': MODE, 'judgements': {}, 'flags': []}
 
     # ---- 0. PrePoMax 狀態 ----
     st = jl(p.call('get_status')[0]); m = st.get('model', {})
     if not st.get('isIdle') or st.get('isReadOnly'): raise Stop('PrePoMax 忙碌中或唯讀')
     discard = False
-    if m.get('hasUnsavedChanges'):
+    if m.get('hasUnsavedChanges') and not CURRENT:
         fn = (m.get('fileName') or '').lower()
         md = jl(p.call('read_model')[0])
         mats = {x.get('name') if isinstance(x, dict) else str(x) for x in md.get('materials', [])}
@@ -103,10 +127,17 @@ def main():
         need_mesh = True; existing_sec = {}
     else:
         # ---- 1. 開啟既有模型（另存副本，原檔不動） ----
-        log('\n## 1. 開啟既有 PrePoMax 模型')
-        run(p, f"pmx.open(r'{SRC}', discard_changes={discard})")
-        run(p, f"pmx.save(r'{os.path.join(OUT, 'auto_model.pmx')}')")
-        log(f'- 已開啟 {SRC}，並立即另存為 results 資料夾的 auto_model.pmx；之後所有修改只在副本上，原檔不變')
+        if MODE == 'pmx':
+            log('\n## 1. 開啟既有 PrePoMax 模型')
+            run(p, f"pmx.open(r'{SRC}', discard_changes={discard})")
+            run(p, f"pmx.save(r'{os.path.join(OUT, 'auto_model.pmx')}')")
+            log(f'- 已開啟 {SRC}，並立即另存為 results 資料夾的 auto_model.pmx；之後所有修改只在副本上，原檔不變')
+        else:
+            log('\n## 1. 使用 PrePoMax 目前開著的模型')
+            run(p, f"pmx.save(r'{os.path.join(OUT, 'auto_model.pmx')}')")
+            log(f'- 目前模型（{SRC or "尚未存檔"}）已另存為 results 資料夾的 auto_model.pmx；之後所有修改只在副本上'
+                + ('，原本的 .pmx 檔不變' if SRC else ''))
+            if stepf: log(f'- 指令歷程中匯入的 STEP：{stepf}')
         props = pyj(p, "[pmx.model.properties.model_space, pmx.model.properties.unit_system]")
         log(f'- 模型空間 {props[0]}，單位系統 {props[1]}')
         if props[1] != 'MM_TON_S_C': raise Stop(f'單位系統為 {props[1]}，本工具目前只支援 MM_TON_S_C（mm、N、MPa、t）')
@@ -115,6 +146,23 @@ def main():
         need_mesh = not mparts
         names = gnames if need_mesh else mparts
         log(f'- 零件（{"幾何，尚未網格" if need_mesh else "網格"}）：{", ".join(names)}')
+        nsec = pyj(p, "len(pmx.model.sections.get_names())")
+        if MODE == 'current' and stepf and os.path.exists(stepf) and nsec == 0 and all(n.lower().startswith('solid_part') for n in names):
+            try:
+                gparts = pyj(p, "[[n, list(pmx.model.geometry.parts.get(n).get_bounding_box())] for n in pmx.model.geometry.parts.get_names()]")
+                mp, how = step_names.match_parts(step_names.read_step_parts(stepf), [(a, b) for a, b in gparts])
+            except Exception as e:
+                mp, how = None, f'{type(e).__name__}: {e}'
+            if mp:
+                newn = step_names.unique_names(mp)
+                src_r = '\n'.join(f"pmx.model.geometry.parts.rename('{a}', '{b}')" for a, b in newn.items() if a != b)
+                if not need_mesh:
+                    src_r += '\n' + '\n'.join(f"pmx.model.parts.rename('{a}', '{b}')" for a, b in newn.items() if a != b)
+                run(p, src_r or 'pass')
+                names = [newn.get(n, n) for n in names]
+                log(f'- 依匯入的 STEP 取回零件名稱（{how}）：' + '、'.join(f'{a} → {b}' for a, b in newn.items()))
+            else:
+                log(f'- ⚠ 無法由 STEP 取回零件名稱（{how}），沿用 {", ".join(names)}')
         secs = pyj(p, "[[s.name, s.region_type, s.region_name, s.material_name] for s in [pmx.model.sections.get(n) for n in pmx.model.sections.get_names()]]")
         existing_sec = {rn: mat for _, rt, rn, mat in secs if rt == 'PartName'}
         other = [s for s in secs if s[1] != 'PartName']
@@ -412,7 +460,7 @@ def main():
         return '下段' if f < 1/3 else ('中段' if f < 2/3 else '上段')
     S = []
     def sl(x=''): S.append(str(x))
-    sl(f'# 結構剛性評估報告：{os.path.basename(SRC)}')
+    sl(f'# 結構剛性評估報告：{os.path.basename(SRC) if SRC else (os.path.basename(stepf) + "（PrePoMax 中匯入）" if stepf else name)}')
     sl(f'產生時間：{time.strftime("%Y-%m-%d %H:%M")}　｜　工具：FEA-AI auto_analyze（PrePoMax 3.0.1 / CalculiX）')
     sl('\n## 一、結論摘要')
     k0 = {ln: out[(V0, ln)].get('k_N_per_um') for ln in cut}
@@ -519,7 +567,7 @@ if __name__ == '__main__':
         log(f'\n**停止：{e}**')
     finally:
         fs = input_files()
-        od = outdir or (os.path.join(RESULTS, os.path.splitext(os.path.basename(fs[-1]))[0]) if fs else RESULTS)
+        od = outdir or OUTDIR[0] or (os.path.join(RESULTS, os.path.splitext(os.path.basename(fs[-1]))[0]) if fs else RESULTS)
         os.makedirs(od, exist_ok=True)
         body = REPORT_HEAD + (['\n---\n\n# 附錄：自動判斷過程'] if REPORT_HEAD else []) + LOG
         open(os.path.join(od, '報告.md'), 'w', encoding='utf-8').write('\n'.join(body) + '\n')

@@ -17,6 +17,22 @@
       "problemMatcher": []
     },
     {
+      "label": "FEA: 全自動分析 PrePoMax 目前開著的模型",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": [
+        "auto_analyze.py",
+        "--current"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/mcp",
+        "env": {
+          "PYTHONUTF8": "1"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "FEA: 檢查 STEP 零件名稱（不需 PrePoMax）",
       "type": "process",
       "command": "${command:python.interpreterPath}",
