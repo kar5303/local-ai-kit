@@ -38,7 +38,7 @@ def pyj(p, expr):
     return json.loads(run(p, f"import json\nprint(json.dumps({expr}))"))
 
 def sel_surf(pid, fids): return f"pmx.create.selection_by_ids('femodel', 'surfaces', 'surfaces', {{{pid}: {list(fids)}}})"
-def sel_surf_nodes(pid, fids): return f"pmx.create.selection_by_ids('femodel', 'nodes', 'surfaces', {{{pid}: {list(fids)}}})"
+def sel_surf_nodes(sel): return f"pmx.create.selection_by_ids('femodel', 'nodes', 'surfaces', {dict(sel)!r})"
 def sel_nodes(ids): return f"pmx.create.selection_by_ids('femodel', 'nodes', 'nodes', {list(ids)})"
 
 SNAME = 'AUTO_Step'
@@ -170,6 +170,10 @@ def main():
         if other and nosec:
             raise Stop(f'模型有以 {other[0][1]} 定義的截面（{[s[0] for s in other]}），無法判斷零件 {nosec} 的材料。請把截面改為以零件（PartName）指定後再執行')
         old_steps = pyj(p, "list(pmx.model.steps.get_names())")
+        if SNAME in old_steps:
+            run(p, f"pmx.model.steps.remove(['{SNAME}'])")
+            log(f'- 移除上次本工具留下的分析步 {SNAME}（副本中）')
+            old_steps = [x for x in old_steps if x != SNAME]
         if old_steps:
             run(p, f"pmx.model.steps.deactivate({old_steps!r})")
             log(f'- 模型原有的分析步 {old_steps} 已在副本中停用（不參與本工具的計算）；本工具另建分析步 {SNAME}')
@@ -278,25 +282,35 @@ def main():
     # ---- 5. 重力方向與支撐 ----
     log('\n## 5. 重力方向與支撐面')
     g = R.detect_gravity(model, fp, mesh, masses, mine, tol)
-    log('| 向下方向 | 支撐零件 | C1 單一零件 | C2 最重零件 | C3 重心在支撐範圍內（餘裕 mm） | C4 承重接合面比例 | 通過 |')
-    log('|---|---|---|---|---|---|---|')
-    for r in g['candidates']:
-        log(f"| {r['down']} | {', '.join(r['support_parts'])} | {'是' if r['C1_single_part'] else '否'} | {'是' if r['C2_heaviest'] else '否'} | "
-            f"{'是' if r['C3_stable'] else '否'}（{r['C3_margin']:.1f}） | {r['C4_bearing_ratio']:.2f} | {'✔' if r['pass'] else ''} |")
+    log('判斷依據：C1 有支撐面（節點圍成面）、C2 支撐零件含最重零件、C3 重心落在支撐範圍內；通過者先比 C4 承重接合面比例，'
+        '相差 0.15 以內再比穩定指數 S = 重心到支撐邊界的餘裕 ÷ 重心高度（越大越不易傾倒）')
+    log('| 向下方向 | 支撐零件 | C1 有支撐面 | C2 含最重零件 | C3 重心在支撐範圍內（餘裕 mm） | 重心高度 mm | 穩定指數 S | C4 承重接合面比例 | 通過 |')
+    log('|---|---|---|---|---|---|---|---|---|')
+    for r in sorted(g['candidates'], key=lambda r: (not r['pass'], -(r['stability'] or -1))):
+        if not r['support_parts']: continue
+        mg = '—' if r['C3_margin'] is None else f"{r['C3_margin']:.1f}"
+        st_ = '—' if r['stability'] is None else f"{r['stability']:.3f}"
+        log(f"| {r['down']} | {', '.join(r['support_parts'])} | {'是' if r['C1_support'] else '否'} | {'是' if r['C2_heaviest'] else '否'} | "
+            f"{'是' if r['C3_stable'] else '否'}（{mg}） | {r['cg_height']:.1f} | {st_} | {r['C4_bearing_ratio']:.2f} | {'✔' if r['pass'] else ''} |")
+    skipped = sum(1 for r in g['candidates'] if not r['support_parts'])
+    if skipped: log(f'- 另有 {skipped} 個斜面法向方向沒有落在最低處的面，略過')
     log(f"- 組件重心 ({', '.join(f'{v:.1f}' for v in g['cg'])})，最重零件 {g['heaviest']}（{masses[g['heaviest']]*1000:.1f} kg）")
     if not g['ok']:
-        passed = [r for r in g['candidates'] if r['pass']]
-        if len(names) == 1 and passed:
-            g['chosen'] = max(passed, key=lambda r: r['support_area']); g['ok'] = True
-            log(f"- 單一零件沒有接合面可比較 C4，改依規則取「通過 C1～C3 中支撐面積最大」的方向（{len(passed)} 個方向通過）")
-            rep['flags'].append('單一零件：重力方向依最大支撐面積選定，請確認擺放方向')
+        sl_ = g.get('shortlist') or []
+        if len(names) == 1 and sl_:
+            g['chosen'] = sl_[0]; g['ok'] = True
+            log(f"- 單一零件：{g['reason']}；依規則取穩定指數最大的方向")
+            rep['flags'].append('單一零件：重力方向依穩定指數選定，請確認擺放方向')
         else:
             raise Stop('重力方向無法判斷：' + g['reason'])
     ch = g['chosen']; d = ch['down']
-    log(f"- **判斷：重力方向 {d}**，支撐零件 {ch['support_parts'][0]}，支撐面 {len(ch['support_faces'])} 個，總面積 {ch['support_area']:.0f} mm²")
+    if len(g.get('shortlist') or []) > 1:
+        log(f"- 依穩定指數選定（第二名 {g['shortlist'][1]['down']}，S = {g['shortlist'][1]['stability']:.3f}）")
+    log(f"- **判斷：重力方向 {d}**，支撐零件 {', '.join(ch['support_parts'])}，支撐面 {len(ch['support_faces'])} 個，總面積 {ch['support_area']:.0f} mm²")
     floating = R.connectivity(names, tie_edges, ch['support_parts'])
     if floating: raise Stop(f'以下零件沒有經由 Tie 連到支撐零件（會造成剛體運動）：{floating}')
-    sup_pid = fp[ch['support_parts'][0]]['id']; sup_fids = [f for _, f in ch['support_faces']]
+    sup_sel = {}
+    for pn, fid in ch['support_faces']: sup_sel.setdefault(fp[pn]['id'], []).append(fid)
     rep['judgements']['gravity'] = {k: v for k, v in ch.items() if not k.startswith('_')}
 
     # ---- 6. 受力位置 ----
@@ -320,24 +334,26 @@ def main():
         target = '主軸端與工作台之間的相對'
     else:
         mode = 'free'
-        log(f"- 找不到主軸與工作台（{tt['reason']}），改用規則：離支撐面最遠、且未接合的自由平面為受力面")
-        fe = R.detect_free_end(model, fp, mesh, mine, ch['support_faces'], tol)
+        log(f"- 找不到主軸與工作台（{tt['reason']}），改用規則：離支撐面最高、且未接合的自由平面為受力面")
+        fe = R.detect_free_end(model, fp, mesh, mine, ch['support_faces'], tol, down=d)
         if not fe['ok']: raise Stop(fe['reason'])
         c = fe['chosen']; load_part, load_face = c['part'], c['face']
-        log(f"- **判斷：受力面 {load_part} 面 {load_face}**，形心 ({', '.join(f'{v:.1f}' for v in c['centroid'])})，"
-            f"距支撐面形心 {c['distance']:.1f} mm，面積 {c['area']:.0f} mm²")
-        nose_nodes = R.nodes_on_plane(model, mesh[load_part]['nodes'], c['normal'], c['centroid'], tol)
+        load_group = c['group']
+        Atot = sum(g_['area'] for g_ in load_group)
+        log(f"- **判斷：受力面（離支撐面最高 {c['height']:.1f} mm 的自由平面，共 {len(load_group)} 個面、{Atot:.0f} mm²）**："
+            + '、'.join(f"{g_['part']} 面 {g_['face']}（{g_['area']:.0f} mm²）" for g_ in load_group))
+        nose_nodes = sorted({i for g_ in load_group for i in R.nodes_on_plane(model, mesh[g_['part']]['nodes'], g_['normal'], g_['centroid'], tol)})
         table_nodes = []
-        log(f'- 量測位移用節點：受力面所在平面上 {len(nose_nodes)} 個')
+        log(f'- 量測位移用節點：受力面上 {len(nose_nodes)} 個；力依面積分配到各面')
         if not nose_nodes: raise Stop('量測節點為 0')
-        rep['flags'].append(f'受力位置依「離支撐最遠的自由面」規則選定（{load_part} 面 {load_face}），請確認是否為實際受力位置')
+        rep['flags'].append('受力位置依「離支撐面最高的自由面」規則選定（' + '、'.join(f"{g_['part']} 面 {g_['face']}" for g_ in load_group) + '），請確認是否為實際受力位置')
         rep['judgements']['tool'] = {'free_end': load_part, 'face': load_face, 'distance': c['distance']}
         target = '受力面'
 
     # ---- 7. 邊界條件與負載 ----
     log('\n## 7. 邊界條件與工況')
     run(p, f"step = pmx.model.steps.add_static('{SNAME}')")
-    run(p, f"step = pmx.model.steps.get('{SNAME}')\nstep.bcs.add_fixed('SUP_FIX', {sel_surf_nodes(sup_pid, sup_fids)})")
+    run(p, f"step = pmx.model.steps.get('{SNAME}')\nstep.bcs.add_fixed('SUP_FIX', {sel_surf_nodes(sup_sel)})")
     axis = max(range(3), key=lambda k: abs(d[k]))
     variants = {'偏剛（支撐面全固定）': ['SUP_FIX']}
     if abs(abs(d[axis]) - 1) < 1e-6:
@@ -347,7 +363,7 @@ def main():
         perp_axis = [k for k in range(3) if k != axis and k != max(range(3), key=lambda k: e[k])][0]
         u = ['u1', 'u2', 'u3']
         run(p, f"step = pmx.model.steps.get('{SNAME}')\n"
-               f"step.bcs.add_displacement_rotation('SUP_VERT', {sel_surf_nodes(sup_pid, sup_fids)}, {u[axis]}=0)\n"
+               f"step.bcs.add_displacement_rotation('SUP_VERT', {sel_surf_nodes(sup_sel)}, {u[axis]}=0)\n"
                f"step.bcs.add_displacement_rotation('SUP_A', {sel_nodes([a_id])}, " + ', '.join(f'{u[k]}=0' for k in range(3) if k != axis) + ")\n"
                f"step.bcs.add_displacement_rotation('SUP_B', {sel_nodes([b_id])}, {u[perp_axis]}=0)")
         variants['偏柔（支撐面只限垂直＋最少水平拘束）'] = ['SUP_VERT', 'SUP_A', 'SUP_B']
@@ -361,12 +377,19 @@ def main():
     lcs = {'LC0 自重': ['LC0_G']}
     for k, ax in enumerate('XYZ'):
         f = [0.0, 0.0, 0.0]; f[k] = F_CUT
-        src = f"step = pmx.model.steps.get('{SNAME}')\nstep.loads.add_surface_traction('LC{k+1}_N', {sel_surf(lp_pid, [load_face])}, f1={f[0]}, f2={f[1]}, f3={f[2]})"
+        if mode == 'tool':
+            src = f"step = pmx.model.steps.get('{SNAME}')\nstep.loads.add_surface_traction('LC{k+1}_N', {sel_surf(lp_pid, [load_face])}, f1={f[0]}, f2={f[1]}, f3={f[2]})"
+        else:
+            src = f"step = pmx.model.steps.get('{SNAME}')"
+            names_k = []
+            for j, g_ in enumerate(load_group):
+                w = g_['area'] / Atot; nm = f'LC{k+1}_N{j}'; names_k.append(nm)
+                src += f"\nstep.loads.add_surface_traction('{nm}', {sel_surf(fp[g_['part']]['id'], [g_['face']])}, f1={f[0]*w}, f2={f[1]*w}, f3={f[2]*w})"
         if mode == 'tool':
             src += f"\nstep.loads.add_surface_traction('LC{k+1}_T', {sel_surf(fp[tb['table_part']]['id'], [tb['table_face']])}, f1={-f[0]}, f2={-f[1]}, f3={-f[2]})"
             lcs[f'LC{k+1} 切削力 {ax}'] = [f'LC{k+1}_N', f'LC{k+1}_T']
         else:
-            lcs[f'LC{k+1} 單位力 {ax}'] = [f'LC{k+1}_N']
+            lcs[f'LC{k+1} 單位力 {ax}'] = names_k
         run(p, src)
     log(f'- LC0：全部零件自重，g = {gv} mm/s²')
     if mode == 'tool':
@@ -483,7 +506,8 @@ def main():
         # 位置比較允許 1 個百分點的差（對稱位置佔比相同時，排名順序可能互換）
         top1 = sorted(bavg[vns[1]], key=lambda k: -bavg[vns[1]][k])[:2]
         thr = bavg[V0][rank_blocks[min(1, len(rank_blocks)-1)]] - 1.0
-        same = rank_parts[vns[0]][:2] == rank_parts[vns[1]][:2] and all(bavg[V0][k] >= thr for k in top1)
+        pthr = avg[V0][rank_parts[V0][min(1, len(names)-1)]] - 1.0
+        same = all(avg[V0][n] >= pthr for n in rank_parts[vns[1]][:2]) and all(bavg[V0][k] >= thr for k in top1)
         sl(f'- 兩種支撐條件下前兩名{"相同 → 結論不受安裝條件影響" if same else "不同 → 結論受安裝條件影響，請以實際安裝方式確認"}')
     for n in names:
         if g0[n]['UR'] is not None and g0[n]['UR'] >= 1: sl(f'- ⚠ {n} 自重下強度利用率 {g0[n]["UR"]:.2f} ≥ 1，必須處理')

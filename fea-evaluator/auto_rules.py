@@ -142,11 +142,14 @@ def connectivity(parts, ties, roots):
 def detect_gravity(model, fp, mp, masses, ties, tol):
     """
     候選方向 = 所有平面的法向（合併平行者）。對每個候選「向下」方向 d：
-      C1 最低處（沿 d 最遠）的平面只屬於一個零件 → 機台只能站在一個零件上
-      C2 該零件是最重的零件（底座）
-      C3 組件重心投影落在支撐面節點的凸包內（站得住），記錄邊界餘裕
-      C4 零件間接合面中，法向與 d 平行的面積比例（承重接合面垂直於重力）
-    選擇：通過 C1～C3 者；若多於一個，取 C4 最大；C4 差距 < 0.15 判為無法區分，停止。
+      支撐面 = 沿 d 最遠處（最低處）的平面，可分屬多個零件
+      C1 支撐面存在，且支撐節點至少圍成一個面（不是只有一條線）
+      C2 支撐零件包含最重的零件（機台站在底座上；零件同重時任一即可）
+      C3 組件重心投影落在支撐節點凸包內（站得住），記錄邊界餘裕 m
+      C4 零件接合面中，法向與 d 平行的面積比例（承重接合面垂直於重力）
+      S  穩定指數 = 餘裕 m ÷ 重心高度 h（傾倒前可承受的水平加速度比，越大越穩）
+    選擇：通過 C1～C3 者中，先看 C4：與最大 C4 相差 0.15 以內的方向再比 S，取 S 最大；
+          前兩名 S 相差不到 10% 視為無法區分，停止。
     """
     dirs = []
     for p in fp:
@@ -155,7 +158,8 @@ def detect_gravity(model, fp, mp, masses, ties, tol):
             if not any(dot(d, e) > PAR for e in dirs): dirs.append(d)
     M = sum(masses.values())
     cg = mul([sum(masses[p]*mp[p]['cg'][k] for p in masses) for k in range(3)], 1/M)
-    heaviest = max(masses, key=masses.get)
+    mmax = max(masses.values())
+    heaviest = [p for p in masses if masses[p] >= mmax * (1 - 1e-6)]
     tie_area = sum(t['area'] for t in ties) or 1.0
     allx = [model['nodes'][i] for p in mp for i in mp[p]['nodes']]
     rows = []
@@ -166,27 +170,31 @@ def detect_gravity(model, fp, mp, masses, ties, tol):
         sparts = sorted({p for p, _ in sup})
         r = {'down': [round(x, 4) for x in d], 'support_parts': sparts, 'support_faces': [(p, f['id']) for p, f in sup],
              'support_area': sum(f['area'] for _, f in sup)}
-        r['C1_single_part'] = len(sparts) == 1
-        r['C2_heaviest'] = sparts == [heaviest]
         e1, e2 = plane_basis(d)
         ids = [i for p in sparts for i in mp[p]['nodes'] if dot(model['nodes'][i], d) >= ext - tol]
         hull = convex_hull([(dot(model['nodes'][i], e1), dot(model['nodes'][i], e2)) for i in ids])
-        r['C3_margin'] = hull_margin(hull, (dot(cg, e1), dot(cg, e2)))
-        r['C3_stable'] = r['C3_margin'] > 0
+        r['C1_support'] = bool(sup) and len(hull) >= 3
+        r['C2_heaviest'] = any(h in sparts for h in heaviest)
+        r['C3_margin'] = hull_margin(hull, (dot(cg, e1), dot(cg, e2))) if r['C1_support'] else None
+        r['C3_stable'] = r['C3_margin'] is not None and r['C3_margin'] > 0
         r['cg_height'] = ext - dot(cg, d)
+        r['stability'] = (r['C3_margin'] / r['cg_height']) if r['C3_stable'] and r['cg_height'] > 0 else None
         r['C4_bearing_ratio'] = sum(t['area'] for t in ties if abs(dot(t['normal'], d)) > PAR) / tie_area
-        r['pass'] = r['C1_single_part'] and r['C2_heaviest'] and r['C3_stable']
+        r['pass'] = r['C1_support'] and r['C2_heaviest'] and r['C3_stable']
         r['_hull'] = hull; r['_e'] = (e1, e2); r['_ext'] = ext; r['_ids'] = ids
         rows.append(r)
     ok = [r for r in rows if r['pass']]
-    ok.sort(key=lambda r: -r['C4_bearing_ratio'])
-    res = {'cg': cg, 'heaviest': heaviest, 'candidates': rows}
+    res = {'cg': cg, 'heaviest': heaviest[0], 'candidates': rows}
     if not ok:
-        res.update(ok=False, reason='沒有任何方向同時滿足 C1～C3（單一零件支撐、為最重零件、重心落在支撐範圍內）')
-    elif len(ok) > 1 and ok[0]['C4_bearing_ratio'] - ok[1]['C4_bearing_ratio'] < 0.15:
-        res.update(ok=False, reason=f"有 {len(ok)} 個方向通過 C1～C3，且承重接合面比例差距不足 0.15，無法區分")
-    else:
-        res.update(ok=True, chosen=ok[0])
+        res.update(ok=False, reason='沒有任何方向同時滿足 C1～C3（有支撐面、支撐零件含最重零件、重心落在支撐範圍內）')
+        return res
+    c4 = max(r['C4_bearing_ratio'] for r in ok)
+    near = sorted([r for r in ok if r['C4_bearing_ratio'] >= c4 - 0.15], key=lambda r: -r['stability'])
+    res['shortlist'] = near
+    if len(near) > 1 and near[1]['stability'] >= 0.9 * near[0]['stability']:
+        res.update(ok=False, reason=f"通過的方向中，前兩名穩定指數相差不到 10%（{near[0]['stability']:.3f} vs {near[1]['stability']:.3f}），無法區分")
+        return res
+    res.update(ok=True, chosen=near[0], rule=('C4' if len(near) == 1 else 'C4+S'))
     return res
 
 def soft_support_points(model, chosen):
@@ -245,25 +253,40 @@ def face_nodes_near(model, part_nodes, n, c, center, radius, tol):
     return [i for i in ids if norm(sub(sub(model['nodes'][i], center), mul(n, dot(sub(model['nodes'][i], center), n)))) <= radius]
 
 # ---------------- 5b. 找不到主軸時：離支撐最遠的自由面 ----------------
-def detect_free_end(model, fp, mp, ties, support_faces, tol):
+def detect_free_end(model, fp, mp, ties, support_faces, tol, down=None):
     """
-    規則：所有平面中，排除參與 Tie 的面與支撐面，取「面形心到支撐面形心（面積加權）距離」最大的面
-    作為受力面。用於單一零件，或組件中找不到主軸與工作台時。
+    規則：所有平面中，排除參與 Tie 的面與支撐面，取「離支撐面最高」的面（沿重力反方向的高度最大）作為受力面；
+    高度相同（差 < 容差）時取離支撐面形心最遠者。結構固定在支撐面上時，最高處的自由面就是懸伸最長、最容易變形的位置。
+    用於單一零件，或組件中找不到主軸與工作台時。
     """
     tied = {(t['master_part'], t['master_face']) for t in ties} | {(t['slave_part'], t['slave_face']) for t in ties}
     sup = set(support_faces)
     sf = [f for p in fp for f in fp[p]['faces'] if (p, f['id']) in sup]
     A = sum(f['area'] for f in sf) or 1
     sc = [sum(f['centroid'][k]*f['area'] for f in sf)/A for k in range(3)]
+    up = mul(down, -1.0) if down else None
     best = None
     for p in fp:
         for f in filter(planar, fp[p]['faces']):
             if (p, f['id']) in tied or (p, f['id']) in sup: continue
             dist = norm(sub(f['centroid'], sc))
-            if best is None or dist > best['distance']:
-                best = {'part': p, 'face': f['id'], 'distance': dist, 'centroid': f['centroid'], 'normal': f['normal'], 'area': f['area']}
+            h = dot(sub(f['centroid'], sc), up) if up else 0.0
+            key = (round(h / max(tol, 1e-9)), dist)
+            if best is None or key > best['_key']:
+                best = {'part': p, 'face': f['id'], 'distance': dist, 'height': h, 'centroid': f['centroid'], 'normal': f['normal'], 'area': f['area'], '_key': key}
     if best is None:
         return {'ok': False, 'reason': '沒有可用的自由平面'}
+    best.pop('_key')
+    # 同一高度、同一法向、未接合的所有平面一起受力（例如一個頂面被切成數個零件）
+    group = []
+    for p in fp:
+        for f in filter(planar, fp[p]['faces']):
+            if (p, f['id']) in tied or (p, f['id']) in sup: continue
+            if dot(f['normal'], best['normal']) < PAR: continue
+            if abs(dot(sub(f['centroid'], best['centroid']), best['normal'])) > tol: continue
+            if up and abs(dot(sub(f['centroid'], sc), up) - best['height']) > tol: continue
+            group.append({'part': p, 'face': f['id'], 'area': f['area'], 'centroid': f['centroid'], 'normal': f['normal']})
+    best['group'] = group or [{'part': best['part'], 'face': best['face'], 'area': best['area'], 'centroid': best['centroid'], 'normal': best['normal']}]
     return {'ok': True, 'chosen': best, 'support_centroid': sc}
 
 def region_blocks(elements, parts, n_div=4):
