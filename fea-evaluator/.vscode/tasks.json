@@ -2,7 +2,7 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "FEA: 全自動分析 input 資料夾的 STEP",
+      "label": "FEA: 全自動分析 input 資料夾的 STEP / .pmx",
       "type": "process",
       "command": "${command:python.interpreterPath}",
       "args": [

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-全自動組件分析：把 STEP 放進 FEA-AI\\input\\，執行本程式（VS Code 任務「FEA: 全自動分析 input 的 STEP」）。
+全自動組件分析：把 STEP 或 PrePoMax 模型（.pmx）放進 FEA-AI\\input\\，執行本程式（VS Code 任務「FEA: 全自動分析 input 資料夾的 STEP / .pmx」）。
+.pmx：開啟後立即另存到 results（原檔不動），沿用模型的零件、網格、材料、截面、接合；原有分析步在副本中停用，另建本工具的分析步。
 流程：匯入 → 依 STEP 名稱命名零件 → 材料（名稱代號）→ 網格 → Tie（PrePoMax 接合面搜尋）
       → 重力方向與支撐面（幾何判斷）→ 主軸端與工作台面（幾何判斷）
       → 兩種支撐 × 4 個工況求解 → 評估 → 報告
@@ -39,13 +40,23 @@ def sel_surf(pid, fids): return f"pmx.create.selection_by_ids('femodel', 'surfac
 def sel_surf_nodes(pid, fids): return f"pmx.create.selection_by_ids('femodel', 'nodes', 'surfaces', {{{pid}: {list(fids)}}})"
 def sel_nodes(ids): return f"pmx.create.selection_by_ids('femodel', 'nodes', 'nodes', {list(ids)})"
 
+SNAME = 'AUTO_Step'
+
+def input_files():
+    fs = []
+    for ext in ('*.stp', '*.step', '*.STP', '*.STEP', '*.pmx', '*.PMX'):
+        fs += glob.glob(os.path.join(INPUT, ext))
+    return sorted(set(fs), key=os.path.getmtime)
+
 def main():
-    steps = sorted(glob.glob(os.path.join(INPUT, '*.stp')) + glob.glob(os.path.join(INPUT, '*.step')), key=os.path.getmtime)
-    if not steps: raise Stop(f'input 資料夾沒有 .stp/.step：{INPUT}')
-    STEP = steps[-1]; name = os.path.splitext(os.path.basename(STEP))[0]
+    fs = input_files()
+    if not fs: raise Stop(f'input 資料夾沒有 .stp/.step/.pmx：{INPUT}')
+    SRC = fs[-1]; name = os.path.splitext(os.path.basename(SRC))[0]
+    MODE = 'pmx' if SRC.lower().endswith('.pmx') else 'step'
     OUT = os.path.join(RESULTS, name); os.makedirs(OUT, exist_ok=True)
-    log(f'# 全自動分析：{os.path.basename(STEP)}'); log(f'時間：{time.strftime("%Y-%m-%d %H:%M")}')
-    rep = {'step_file': STEP, 'judgements': {}, 'flags': []}
+    log(f'# 全自動分析：{os.path.basename(SRC)}'); log(f'時間：{time.strftime("%Y-%m-%d %H:%M")}')
+    log(f'輸入類型：{"PrePoMax 模型（.pmx）" if MODE == "pmx" else "STEP 幾何"}')
+    rep = {'source_file': SRC, 'mode': MODE, 'judgements': {}, 'flags': []}
     p = PrePoMax()
 
     # ---- 0. PrePoMax 狀態 ----
@@ -62,65 +73,121 @@ def main():
         else:
             raise Stop(f'PrePoMax 目前的模型有未存檔的修改，為了不動到你的工作而停止。請先存檔或關閉該模型。（檔名={fn!r}，材料={sorted(mats)}，分析步={md.get("steps")}）')
 
-    # ---- 1. 匯入與命名 ----
-    log('\n## 1. 匯入與零件命名')
-    run(p, f"pmx.new_model('ThreeD', 'MM_TON_S_C', discard_changes={discard})")
-    run(p, f"pmx.save(r'{os.path.join(OUT, 'auto_model.pmx')}')")   # 標記為本工具建立的模型
-    run(p, f"pmx.import_file(r'{STEP}')")
-    gparts = pyj(p, "[[n, list(pmx.model.geometry.parts.get(n).get_bounding_box())] for n in pmx.model.geometry.parts.get_names()]")
-    try:
-        sp = step_names.read_step_parts(STEP)
-        mp, how = step_names.match_parts(sp, [(n, b) for n, b in gparts])
-        log(f'- STEP 實體 {len(sp)} 個，PrePoMax 零件 {len(gparts)} 個')
-    except Exception as e:
-        mp, how = None, f'讀取 STEP 零件名稱失敗（{type(e).__name__}: {e}）'
-    if mp:
-        new = step_names.unique_names(mp)
-        run(p, '\n'.join(f"pmx.model.geometry.parts.rename('{a}', '{b}')" for a, b in new.items() if a != b) or 'pass')
-        log(f'- 對應方式：{how}')
-        for a, b in new.items(): log(f'  - {a} → {b}')
-    else:
-        new = {n: n for n, _ in gparts}
-        log(f'- ⚠ 無法取得 CAD 零件名稱：{how}。沿用 PrePoMax 名稱 {", ".join(new)}')
-    rep['judgements']['naming'] = {'how': how, 'map': new}
-
-    # ---- 2. 材料 ----
-    log('\n## 2. 材料（依零件名稱的材料代號；沒有代號的零件用預設材料。數值與出處見 rules/materials.json）')
     MATS = R.load_materials(MAT_FILE)
     DEFAULT = json.load(open(MAT_FILE, encoding='utf-8')).get('default_when_no_code')
-    names = list(new.values())
-    asg, missing = R.assign_materials(names, MATS)
-    if missing:
-        if not DEFAULT or DEFAULT not in MATS:
-            raise Stop(f'以下零件名稱沒有材料代號，且 rules/materials.json 的 default_when_no_code 未設定或不在材料表中：{missing}')
-        for n in missing: asg[n] = DEFAULT
-    for n in names: log(f'- {n}：{asg[n]}' + ('　**（名稱中沒有材料代號，使用預設材料）**' if n in missing else ''))
-    if missing:
-        log(f'- ⚠ {len(missing)}/{len(names)} 個零件使用預設材料 {DEFAULT}。剛性貢獻佔比與質量會受材料影響；'
-            f'要改材料，在零件名稱加代號（{", ".join(MATS)}）後重跑，或修改 default_when_no_code。')
+    missing = []; matprops = {}
+
+    if MODE == 'step':
+        # ---- 1. 匯入與命名 ----
+        log('\n## 1. 匯入與零件命名')
+        run(p, f"pmx.new_model('ThreeD', 'MM_TON_S_C', discard_changes={discard})")
+        run(p, f"pmx.save(r'{os.path.join(OUT, 'auto_model.pmx')}')")   # 標記為本工具建立的模型
+        run(p, f"pmx.import_file(r'{SRC}')")
+        gparts = pyj(p, "[[n, list(pmx.model.geometry.parts.get(n).get_bounding_box())] for n in pmx.model.geometry.parts.get_names()]")
+        try:
+            sp = step_names.read_step_parts(SRC)
+            mp, how = step_names.match_parts(sp, [(n, b) for n, b in gparts])
+            log(f'- STEP 實體 {len(sp)} 個，PrePoMax 零件 {len(gparts)} 個（STEP 編碼 {step_names.FILE_ENCODING.get(SRC)}）')
+        except Exception as e:
+            mp, how = None, f'讀取 STEP 零件名稱失敗（{type(e).__name__}: {e}）'
+        if mp:
+            new = step_names.unique_names(mp)
+            run(p, '\n'.join(f"pmx.model.geometry.parts.rename('{a}', '{b}')" for a, b in new.items() if a != b) or 'pass')
+            log(f'- 對應方式：{how}')
+            for a, b in new.items(): log(f'  - {a} → {b}')
+        else:
+            new = {n: n for n, _ in gparts}
+            log(f'- ⚠ 無法取得 CAD 零件名稱：{how}。沿用 PrePoMax 名稱 {", ".join(new)}')
+        rep['judgements']['naming'] = {'how': how, 'map': new}
+        names = list(new.values())
+        need_mesh = True; existing_sec = {}
+    else:
+        # ---- 1. 開啟既有模型（另存副本，原檔不動） ----
+        log('\n## 1. 開啟既有 PrePoMax 模型')
+        run(p, f"pmx.open(r'{SRC}', discard_changes={discard})")
+        run(p, f"pmx.save(r'{os.path.join(OUT, 'auto_model.pmx')}')")
+        log(f'- 已開啟 {SRC}，並立即另存為 results 資料夾的 auto_model.pmx；之後所有修改只在副本上，原檔不變')
+        props = pyj(p, "[pmx.model.properties.model_space, pmx.model.properties.unit_system]")
+        log(f'- 模型空間 {props[0]}，單位系統 {props[1]}')
+        if props[1] != 'MM_TON_S_C': raise Stop(f'單位系統為 {props[1]}，本工具目前只支援 MM_TON_S_C（mm、N、MPa、t）')
+        mparts = pyj(p, "list(pmx.model.parts.get_names())")
+        gnames = pyj(p, "list(pmx.model.geometry.parts.get_names())")
+        need_mesh = not mparts
+        names = gnames if need_mesh else mparts
+        log(f'- 零件（{"幾何，尚未網格" if need_mesh else "網格"}）：{", ".join(names)}')
+        secs = pyj(p, "[[s.name, s.region_type, s.region_name, s.material_name] for s in [pmx.model.sections.get(n) for n in pmx.model.sections.get_names()]]")
+        existing_sec = {rn: mat for _, rt, rn, mat in secs if rt == 'PartName'}
+        other = [s for s in secs if s[1] != 'PartName']
+        nosec = [n for n in names if n not in existing_sec]
+        if other and nosec:
+            raise Stop(f'模型有以 {other[0][1]} 定義的截面（{[s[0] for s in other]}），無法判斷零件 {nosec} 的材料。請把截面改為以零件（PartName）指定後再執行')
+        old_steps = pyj(p, "list(pmx.model.steps.get_names())")
+        if old_steps:
+            run(p, f"pmx.model.steps.deactivate({old_steps!r})")
+            log(f'- 模型原有的分析步 {old_steps} 已在副本中停用（不參與本工具的計算）；本工具另建分析步 {SNAME}')
+        rep['judgements']['naming'] = {'how': '沿用 PrePoMax 模型的零件名稱', 'map': {n: n for n in names}}
+
+    # ---- 2. 材料 ----
+    log('\n## 2. 材料')
+    asg = {}
+    if existing_sec:
+        log('- 模型已指定的材料（沿用，不修改）：')
+        for n in names:
+            if n in existing_sec:
+                mat = existing_sec[n]
+                pr = pyj(p, f"{{x.property_type: x.get_values() for x in pmx.model.materials.get('{mat}').get_properties()}}")
+                el = next((v for k, v in pr.items() if 'elastic' in k.lower()), {}); de = next((v for k, v in pr.items() if 'density' in k.lower()), {})
+                code = next((c for c in sorted(MATS, key=len, reverse=True) if c.lower() in mat.lower() or c.lower() in n.lower()), None)
+                matprops[n] = {'E': el.get('youngs_modulus'), 'nu': el.get('poissons_ratio'), 'density': de.get('density'), 'material': mat,
+                               'class': MATS[code]['class'] if code else 'ductile', 'allowable': MATS[code]['allowable'] if code else None, 'code': code}
+                if not matprops[n]['density']: raise Stop(f'材料 {mat} 沒有密度，無法計算質量與自重')
+                log(f"  - {n}：{mat}（E {matprops[n]['E']}，ν {matprops[n]['nu']}，ρ {matprops[n]['density']}）"
+                    + (f"，容許值依 {code}：{MATS[code]['allowable']} MPa" if code else '，⚠ 材料名稱/零件名稱沒有材料代號，強度利用率不計算'))
+                asg[n] = mat
+    todo = [n for n in names if n not in asg]
+    if todo:
+        log('- 依零件名稱的材料代號指定（沒有代號用預設材料；數值與出處見 rules/materials.json）：')
+        a2, missing = R.assign_materials(todo, MATS)
+        if missing:
+            if not DEFAULT or DEFAULT not in MATS:
+                raise Stop(f'以下零件名稱沒有材料代號，且 rules/materials.json 的 default_when_no_code 未設定或不在材料表中：{missing}')
+            for n in missing: a2[n] = DEFAULT
+        existing_mats = set(pyj(p, "list(pmx.model.materials.get_names())"))
+        for code in sorted(set(a2.values())):
+            if code in existing_mats: continue
+            mt = MATS[code]
+            run(p, f"pmx.model.materials.add('{code}', [pmx.create.elastic({mt['E']}, {mt['nu']}), pmx.create.density({mt['density']})])")
+        for n in todo:
+            mt = MATS[a2[n]]
+            matprops[n] = {'E': mt['E'], 'nu': mt['nu'], 'density': mt['density'], 'material': a2[n], 'class': mt['class'], 'allowable': mt['allowable'], 'code': a2[n]}
+            asg[n] = a2[n]
+            log(f'  - {n}：{a2[n]}' + ('　**（名稱中沒有材料代號，使用預設材料）**' if n in missing else ''))
+        if missing:
+            log(f'- ⚠ {len(missing)}/{len(names)} 個零件使用預設材料 {DEFAULT}。剛性貢獻佔比與質量會受材料影響；'
+                f'要改材料，在零件名稱加代號（{", ".join(MATS)}）後重跑，或修改 default_when_no_code。')
     rep['default_material_parts'] = missing
-    for code in sorted(set(asg.values())):
-        mt = MATS[code]
-        run(p, f"pmx.model.materials.add('{code}', [pmx.create.elastic({mt['E']}, {mt['nu']}), pmx.create.density({mt['density']})])")
-    geo = {n: pyj(p, f"[pmx.model.geometry.parts.get('{n}').volume, list(pmx.model.geometry.parts.get('{n}').center_of_mass)]") for n in names}
-    masses = {n: geo[n][0] * MATS[asg[n]]['density'] for n in names}
     rep['materials'] = {n: asg[n] for n in names}
 
     # ---- 3. 網格 ----
-    log('\n## 3. 網格（PrePoMax 預設網格設定，二次元素）')
-    res = pyj(p, f"pmx.model.mesh.generate({names!r})")
-    bad = {k: v for k, v in res.items() if v}
-    if bad: raise Stop(f'網格失敗：{bad}')
+    if need_mesh:
+        log('\n## 3. 網格（PrePoMax 預設網格設定，二次元素）')
+        res = pyj(p, f"pmx.model.mesh.generate({names!r})")
+        bad = {k: v for k, v in res.items() if v}
+        if bad: raise Stop(f'網格失敗：{bad}')
+    else:
+        log('\n## 3. 網格（沿用模型既有網格）')
     et = pyj(p, "{n: pmx.model.parts.get_element_types(n) for n in pmx.model.parts.get_names()}")
     nn = pyj(p, "pmx.model.nodes.count")
     log(f'- 節點數 {nn}'); [log(f'  - {k}：{list(v.values())}') for k, v in et.items()]
-    for n in names:
+    for n in todo:
         run(p, f"pmx.model.sections.add_solid('Sec_{n}', '{asg[n]}', pmx.create.region('PartName', '{n}'))")
     mesh_inp = os.path.join(OUT, 'mesh.inp')
     run(p, f"pmx.export_mesh({names!r}, r'{mesh_inp}')")
     model = fea_eval.read_inp(mesh_inp)
+    if model.get('unsupported'): log(f"  ⚠ 匯出網格含未支援的元素型別：{model['unsupported']}")
     mesh = R.mesh_parts(model)
-    for n in names: mesh[n]['cg'] = geo[n][1]
+    masses = {n: mesh[n]['vol'] * matprops[n]['density'] for n in names}
+    log('- 質量（網格體積 × 密度）：' + '、'.join(f'{n} {masses[n]*1000:.1f} kg' for n in names))
     topo = {'femodel': []}
     for n in names:
         t = jl(p.call('read_topology', part_names=[n], limit=240)[0])
@@ -135,11 +202,22 @@ def main():
     tol = max(0.05, 1e-4 * diag)
     log(f'- 幾何容差 {tol:.3f} mm（組件對角線 {diag:.0f} mm 的 1e-4，下限 0.05）')
 
-    # ---- 4. Tie ----
-    log('\n## 4. 零件接合（Tie）')
+    # ---- 4. 零件接合 ----
+    log('\n## 4. 零件接合')
+    have_c = pyj(p, "list(pmx.model.constraints.get_names())") if MODE == 'pmx' else []
+    have_cp = pyj(p, "list(pmx.model.contact_pairs.get_names())") if MODE == 'pmx' else []
+    add_ties = not (have_c or have_cp)
     found = json.loads(run(p, f"import json\nr = pmx.model.contact_pairs.search({tol}, pair_type='Tie', group_by='ByParts')\n"
-                   "print(json.dumps([[x.name, list(x.master_part_names), list(x.slave_part_names), str(x.unresolved)] for x in list(r)]))\nif r.count: r.add()"))
-    log(f'- PrePoMax「搜尋接觸對」（Tie，依零件分組）找到 {len(found)} 組，已加入模型：')
+                   "print(json.dumps([[x.name, list(x.master_part_names), list(x.slave_part_names), str(x.unresolved)] for x in list(r)]))\n"
+                   + ("if r.count: r.add()" if add_ties else "")))
+    if add_ties:
+        log(f'- PrePoMax「搜尋接觸對」（Tie，依零件分組）找到 {len(found)} 組，已加入模型：')
+    else:
+        log(f'- 沿用模型既有的約束 {have_c}' + (f' 與接觸對 {have_cp}' if have_cp else '') + '，不另外加入 Tie')
+        if have_cp:
+            log('  ⚠ 模型含接觸（非線性）：剛性貢獻佔比與修改效果估算只能當參考')
+            rep['flags'].append('模型含接觸（非線性），剛性佔比只能當參考')
+        log(f'- PrePoMax 搜尋到相接觸的零件對（只用於檢查零件是否都有連到支撐，不加入模型）：')
     for nm, ma, sl, un in found: log(f'  - {nm}：master {ma}／slave {sl}' + (f'（未解析：{un}）' if un not in ('None', '[]', '', 'False') else ''))
     mine = R.detect_ties(model, fp, mesh, tol)
     pm_pairs = {frozenset([ma[0], sl[0]]) for _, ma, sl, _ in found if ma and sl and ma[0] != sl[0]}
@@ -210,8 +288,8 @@ def main():
 
     # ---- 7. 邊界條件與負載 ----
     log('\n## 7. 邊界條件與工況')
-    run(p, "step = pmx.model.steps.add_static('Step-1')")
-    run(p, f"step = pmx.model.steps.get('Step-1')\nstep.bcs.add_fixed('SUP_FIX', {sel_surf_nodes(sup_pid, sup_fids)})")
+    run(p, f"step = pmx.model.steps.add_static('{SNAME}')")
+    run(p, f"step = pmx.model.steps.get('{SNAME}')\nstep.bcs.add_fixed('SUP_FIX', {sel_surf_nodes(sup_pid, sup_fids)})")
     axis = max(range(3), key=lambda k: abs(d[k]))
     variants = {'偏剛（支撐面全固定）': ['SUP_FIX']}
     if abs(abs(d[axis]) - 1) < 1e-6:
@@ -220,7 +298,7 @@ def main():
         ab = R.sub(B, A); e = [abs(ab[k]) if k != axis else -1 for k in range(3)]
         perp_axis = [k for k in range(3) if k != axis and k != max(range(3), key=lambda k: e[k])][0]
         u = ['u1', 'u2', 'u3']
-        run(p, f"step = pmx.model.steps.get('Step-1')\n"
+        run(p, f"step = pmx.model.steps.get('{SNAME}')\n"
                f"step.bcs.add_displacement_rotation('SUP_VERT', {sel_surf_nodes(sup_pid, sup_fids)}, {u[axis]}=0)\n"
                f"step.bcs.add_displacement_rotation('SUP_A', {sel_nodes([a_id])}, " + ', '.join(f'{u[k]}=0' for k in range(3) if k != axis) + ")\n"
                f"step.bcs.add_displacement_rotation('SUP_B', {sel_nodes([b_id])}, {u[perp_axis]}=0)")
@@ -230,12 +308,12 @@ def main():
         log('- 重力方向不是座標軸方向，偏柔支撐略過（只算偏剛）')
     pids = [fp[n]['id'] for n in names]
     gv = [G * d[k] for k in range(3)]
-    run(p, f"step = pmx.model.steps.get('Step-1')\nstep.loads.add_gravity('LC0_G', pmx.create.selection_by_ids('femodel', 'parts', 'parts', {pids}), f1={gv[0]}, f2={gv[1]}, f3={gv[2]})")
+    run(p, f"step = pmx.model.steps.get('{SNAME}')\nstep.loads.add_gravity('LC0_G', pmx.create.selection_by_ids('femodel', 'parts', 'parts', {pids}), f1={gv[0]}, f2={gv[1]}, f3={gv[2]})")
     lp_pid = fp[load_part]['id']
     lcs = {'LC0 自重': ['LC0_G']}
     for k, ax in enumerate('XYZ'):
         f = [0.0, 0.0, 0.0]; f[k] = F_CUT
-        src = f"step = pmx.model.steps.get('Step-1')\nstep.loads.add_surface_traction('LC{k+1}_N', {sel_surf(lp_pid, [load_face])}, f1={f[0]}, f2={f[1]}, f3={f[2]})"
+        src = f"step = pmx.model.steps.get('{SNAME}')\nstep.loads.add_surface_traction('LC{k+1}_N', {sel_surf(lp_pid, [load_face])}, f1={f[0]}, f2={f[1]}, f3={f[2]})"
         if mode == 'tool':
             src += f"\nstep.loads.add_surface_traction('LC{k+1}_T', {sel_surf(fp[tb['table_part']]['id'], [tb['table_face']])}, f1={-f[0]}, f2={-f[1]}, f3={-f[2]})"
             lcs[f'LC{k+1} 切削力 {ax}'] = [f'LC{k+1}_N', f'LC{k+1}_T']
@@ -256,7 +334,7 @@ def main():
     for vi, (vn, bcs) in enumerate(variants.items()):
         for li, (ln, lds) in enumerate(lcs.items()):
             jn = f'AUTO_V{vi}_LC{li}'
-            run(p, f"step = pmx.model.steps.get('Step-1')\nstep.bcs.deactivate({allb!r})\nstep.bcs.activate({bcs!r})\n"
+            run(p, f"step = pmx.model.steps.get('{SNAME}')\nstep.bcs.deactivate({allb!r})\nstep.bcs.activate({bcs!r})\n"
                    f"step.loads.deactivate({alll!r})\nstep.loads.activate({lds!r})\n"
                    f"if not pmx.jobs.contains('{jn}'): pmx.jobs.add('{jn}')")
             p.call('run_job', name=jn); t0 = time.time(); status = None
@@ -278,8 +356,8 @@ def main():
 
     # ---- 9. 評估 ----
     log('\n## 9. 評估')
-    allow = {n: MATS[asg[n]]['allowable'] for n in names}
-    cls = {n: MATS[asg[n]]['class'] for n in names}
+    allow = {n: matprops[n]['allowable'] for n in names}
+    cls = {n: matprops[n]['class'] for n in names}
     out = {}; blocks = None; up = [-v for v in d]
     for vn, ln, jn in jobs:
         inp, frd = os.path.join(OUT, jn + '.inp'), os.path.join(OUT, jn + '.frd')
@@ -334,7 +412,7 @@ def main():
         return '下段' if f < 1/3 else ('中段' if f < 2/3 else '上段')
     S = []
     def sl(x=''): S.append(str(x))
-    sl(f'# 結構剛性評估報告：{os.path.basename(STEP)}')
+    sl(f'# 結構剛性評估報告：{os.path.basename(SRC)}')
     sl(f'產生時間：{time.strftime("%Y-%m-%d %H:%M")}　｜　工具：FEA-AI auto_analyze（PrePoMax 3.0.1 / CalculiX）')
     sl('\n## 一、結論摘要')
     k0 = {ln: out[(V0, ln)].get('k_N_per_um') for ln in cut}
@@ -440,8 +518,8 @@ if __name__ == '__main__':
     except Stop as e:
         log(f'\n**停止：{e}**')
     finally:
-        steps = sorted(glob.glob(os.path.join(INPUT, '*.stp')) + glob.glob(os.path.join(INPUT, '*.step')), key=os.path.getmtime)
-        od = outdir or (os.path.join(RESULTS, os.path.splitext(os.path.basename(steps[-1]))[0]) if steps else RESULTS)
+        fs = input_files()
+        od = outdir or (os.path.join(RESULTS, os.path.splitext(os.path.basename(fs[-1]))[0]) if fs else RESULTS)
         os.makedirs(od, exist_ok=True)
         body = REPORT_HEAD + (['\n---\n\n# 附錄：自動判斷過程'] if REPORT_HEAD else []) + LOG
         open(os.path.join(od, '報告.md'), 'w', encoding='utf-8').write('\n'.join(body) + '\n')
