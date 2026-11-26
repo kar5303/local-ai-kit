@@ -1,3 +1,5 @@
+> **FEA 全自動分析（fea-evaluator）**：下載後雙擊最外層的 `START_FEA.bat`（或 `fea-evaluator\START_FEA.bat`），依選單操作。說明見 `fea-evaluator/使用說明-全自動分析.md`。
+
 # 純本機 AI 寫程式環境：建置流程
 
 目標：只用本機 Ollama 模型，在 VS Code 裡「下指令 → 自動改檔 → 自動建置 → 失敗自動修正」。資料不離開電腦，不用 token 費用。

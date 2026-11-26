@@ -2,11 +2,25 @@
   "version": "2.0.0",
   "tasks": [
     {
+      "label": "FEA: 開始分析（選單：input 資料夾 / PrePoMax 目前模型 / 檢查名稱）",
+      "type": "process",
+      "command": "cmd.exe",
+      "args": [
+        "/c",
+        "${workspaceFolder}\\START_FEA.bat"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "FEA: 全自動分析 input 資料夾的 STEP / .pmx",
       "type": "process",
       "command": "${command:python.interpreterPath}",
       "args": [
-        "auto_analyze.py"
+        "auto_analyze.py",
+        "--input"
       ],
       "options": {
         "cwd": "${workspaceFolder}/mcp",

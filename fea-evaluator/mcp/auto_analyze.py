@@ -10,6 +10,10 @@
 不動使用者自己的模型：PrePoMax 目前模型有未存檔的修改（且不是本工具建立的）就停止。
 """
 import os, sys, json, time, shutil, glob, math
+if not sys.flags.utf8_mode and __name__ == '__main__':
+    # 直接執行 .py（雙擊、VS Code「執行 Python 檔案」）時改用 UTF-8 模式重新啟動，中文檔名與內容才不會亂碼
+    import subprocess
+    sys.exit(subprocess.call([sys.executable, '-X', 'utf8', os.path.abspath(__file__)] + sys.argv[1:]))
 HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(HERE)
 sys.path.insert(0, ROOT)
 from pmx_mcp import PrePoMax
@@ -645,7 +649,7 @@ def main():
     return OUT
 
 
-if __name__ == '__main__':
+def run_auto():
     outdir = None
     try:
         outdir = main()
@@ -657,3 +661,56 @@ if __name__ == '__main__':
         os.makedirs(od, exist_ok=True)
         body = REPORT_HEAD + (['\n---\n\n# 附錄：自動判斷過程'] if REPORT_HEAD else []) + LOG
         open(os.path.join(od, '報告.md'), 'w', encoding='utf-8').write('\n'.join(body) + '\n')
+
+
+MENU = """
+==============================================
+ FEA 全自動分析（PrePoMax）
+==============================================
+ 1. 分析 input 資料夾中最新的 STEP / .pmx
+      （把模型檔放進：{inp}）
+ 2. 分析 PrePoMax 目前開著的模型
+      （在 PrePoMax 用「匯入」讀進 STEP 後選這個）
+ 3. 檢查 STEP 零件名稱與材料代號（不需 PrePoMax）
+ 0. 離開
+==============================================
+"""
+
+def menu():
+    os.makedirs(INPUT, exist_ok=True)
+    print(MENU.format(inp=INPUT))
+    while True:
+        c = input('請輸入 1 / 2 / 3 / 0 後按 Enter：').strip()
+        if c in ('0', '1', '2', '3'): return c
+
+def finish(pause):
+    if pause:
+        try: input('\n按 Enter 關閉視窗...')
+        except EOFError: pass
+
+if __name__ == '__main__':
+    args = sys.argv[1:]
+    interactive = bool(sys.stdin and sys.stdin.isatty())
+    pause = False
+    if not args and interactive:
+        c = menu(); pause = True
+        if c == '0': sys.exit(0)
+        if c == '2': CURRENT = True
+        if c == '3':
+            import check_step_names
+            sys.argv = [sys.argv[0]]
+            try: check_step_names.main()
+            except SystemExit as e: print(e)
+            finish(pause); sys.exit(0)
+    if '--pause' in args: pause = True
+    if not CURRENT and not input_files():
+        print(f'\n[停止] input 資料夾沒有 .stp / .step / .pmx：{INPUT}\n請把模型放進去再執行，或在 PrePoMax 匯入後選 2。')
+        finish(pause); sys.exit(0)
+    try:
+        run_auto()
+    except SystemExit as e:
+        print(e)
+    except Exception:
+        import traceback; traceback.print_exc()
+        print('\n[錯誤] 程式發生例外，請把上面的訊息與 results 內的 報告.md 回報。')
+    finish(pause)

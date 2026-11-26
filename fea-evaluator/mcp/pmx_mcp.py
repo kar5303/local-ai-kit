@@ -1,16 +1,25 @@
 # -*- coding: utf-8 -*-
 """PrePoMax Automation Server（MCP streamable HTTP）的 Python 用戶端。只用標準函式庫。"""
-import json, os, time, urllib.request, urllib.error
+import json, os, sys, time, urllib.request, urllib.error
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
+TOKEN_FILE = os.path.join(HERE, 'prepomax_token.txt')
+
 def load_token():
+    """token 來源：環境變數 PREPOMAX_TOKEN → mcp/prepomax_token.txt → 互動視窗時請使用者貼上並存檔。"""
     t = os.environ.get('PREPOMAX_TOKEN')
-    p = os.path.join(HERE, 'prepomax_token.txt')
-    if not t and os.path.exists(p):
-        t = open(p, encoding='utf-8').read().strip()
+    if not t and os.path.exists(TOKEN_FILE):
+        t = open(TOKEN_FILE, encoding='utf-8').read().strip()
+    if not t and sys.stdin and sys.stdin.isatty():
+        print('第一次使用：需要 PrePoMax Automation 的 token（PrePoMax → Tools → Settings → Automation）。')
+        t = input('請貼上 token 後按 Enter：').strip()
+        if t:
+            open(TOKEN_FILE, 'w', encoding='utf-8').write(t)
+            print(f'已存到 {TOKEN_FILE}（此檔不會上傳 GitHub）')
     if not t:
-        raise SystemExit('[ERROR] 找不到 token：mcp\\prepomax_token.txt')
+        raise SystemExit('[ERROR] 找不到 token。請把 PrePoMax → Tools → Settings → Automation 的 token 存成 '
+                         + TOKEN_FILE)
     return t
 
 class PrePoMax:
@@ -20,7 +29,16 @@ class PrePoMax:
         self.sid = None
         self.n = 0
         self.http_timeout = http_timeout
-        self._init()
+        try:
+            self._init()
+        except urllib.error.HTTPError as e:
+            if e.code in (401, 403):
+                raise SystemExit(f'[ERROR] PrePoMax 拒絕連線（HTTP {e.code}）：token 不正確。'
+                                 f'請重新複製 PrePoMax → Tools → Settings → Automation 的 token 存到 {TOKEN_FILE}')
+            raise
+        except (urllib.error.URLError, ConnectionError, OSError) as e:
+            raise SystemExit(f'[ERROR] 連不到 PrePoMax（{self.url}）：{e}\n'
+                             '請先開啟 PrePoMax 3.0.1，並在 Tools → Automation Server 啟用伺服器後再執行。')
 
     def _post(self, payload):
         req = urllib.request.Request(self.url, data=json.dumps(payload).encode('utf-8'), method='POST')
